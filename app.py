@@ -135,10 +135,14 @@ elif page == "2️⃣ Dataset EDA":
         - **Sample noisy / ambiguous texts**
         """
     )
-def load_data():
-        ds = load_dataset("ErfanMoosaviMonazzah/fake-news-detection-English")
-        # convert to pandas
-        df = pd.DataFrame(ds["train"])
+
+    @st.cache_data(show_spinner=False)
+    def load_data():
+        # Use the *public* HF dataset name (no “-English” suffix):
+        ds = load_dataset("ErfanMoosaviMonazzah/fake-news-detection", split="train")
+        df = pd.DataFrame(ds)
+        # add a token-length column
+        df["token_count"] = df["text"].str.split().str.len()
         return df
 
     df = load_data()
@@ -149,50 +153,41 @@ def load_data():
         x="label",
         color="label",
         title="Class Distribution: Fake vs Real",
-        labels={"label": "News Type"},
-        width=700,
-        height=400
+        labels={"label":"News Type"},
+        width=700, height=400
     )
     st.plotly_chart(fig1, use_container_width=True)
 
     # 2) Token-length histogram
-    df["token_count"] = df["text"].str.split().str.len()
     fig2 = px.histogram(
         df,
         x="token_count",
         nbins=50,
         title="Token Count per Article",
-        labels={"token_count": "Number of Tokens"},
-        width=700,
-        height=400
+        labels={"token_count":"Number of Tokens"},
+        width=700, height=400
     )
     st.plotly_chart(fig2, use_container_width=True)
 
-    # 3) Word clouds for Fake vs Real
+    # 3) Word Clouds
     col1, col2 = st.columns(2)
     with col1:
-        st.subheader("WordCloud: Fake News")
-        fake_text = " ".join(df[df["label"] == 0]["text"].tolist())
-        wc_fake = WordCloud(width=400, height=200, background_color="white").generate(fake_text)
-        fig, ax = plt.subplots(figsize=(6, 3))
-        ax.imshow(wc_fake, interpolation="bilinear")
-        ax.axis("off")
+        st.subheader("🗯️ Word Cloud: Fake News")
+        fake_text = " ".join(df[df["label"]==0]["text"].tolist())
+        wc = WordCloud(width=400, height=200, background_color="white").generate(fake_text)
+        fig, ax = plt.subplots(figsize=(6,3))
+        ax.imshow(wc, interpolation="bilinear"); ax.axis("off")
         st.pyplot(fig)
-
     with col2:
-        st.subheader("WordCloud: Real News")
-        real_text = " ".join(df[df["label"] == 1]["text"].tolist())
-        wc_real = WordCloud(width=400, height=200, background_color="white").generate(real_text)
-        fig, ax = plt.subplots(figsize=(6, 3))
-        ax.imshow(wc_real, interpolation="bilinear")
-        ax.axis("off")
+        st.subheader("🗯️ Word Cloud: Real News")
+        real_text = " ".join(df[df["label"]==1]["text"].tolist())
+        wc = WordCloud(width=400, height=200, background_color="white").generate(real_text)
+        fig, ax = plt.subplots(figsize=(6,3))
+        ax.imshow(wc, interpolation="bilinear"); ax.axis("off")
         st.pyplot(fig)
 
-    # 4) Show a few noisy / ambiguous examples
+    # 4) Sample noisy / ambiguous texts
     st.subheader("📝 Sample Noisy / Ambiguous Texts")
-    examples = df.sample(5, random_state=42)[["label", "text"]].reset_index(drop=True)
-    for i, row in examples.iterrows():
-        lbl = "Real" if row["label"] == 1 else "Fake"
-        st.markdown(f"**Example {i+1}** — *{lbl}*")
-        st.write(row["text"])
-        st.write("---")
+    for _, row in df.sample(5, random_state=42).iterrows():
+        lbl = "Real" if row["label"]==1 else "Fake"
+        st.markdown(f"**Label:** {lbl}  \n{row['text'][:200]}…")
