@@ -3,3 +3,8 @@ torch
 transformers
 safetensors
 sentencepiece
+
+datasets
+pandas
+matplotlib
+seaborn
