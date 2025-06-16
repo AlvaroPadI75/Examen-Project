@@ -8,6 +8,11 @@ from transformers import (
     BertTokenizerFast,
     BertForSequenceClassification
 )
+#-------------------------------------
+from datasets import load_dataset
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 # ——————————————————————————————————————
 # ¡Ésta tiene que ser la PRIMERA llamada a Streamlit!
 st.set_page_config(page_title="📰 Fake News Detection", layout="wide")
