@@ -2,5 +2,4 @@ streamlit
 torch
 transformers
 safetensors
-safetensors
 sentencepiece
