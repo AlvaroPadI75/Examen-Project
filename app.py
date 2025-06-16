@@ -76,10 +76,6 @@ def predict_cls(text: str, model_key: str):
     label  = max(conf, key=conf.get)
     return label, conf
 #
-# 4) Streamlit UI
-st.set_page_config(page_title="Fake News Detection", layout="wide")
-st.title("📰 Fake News Detection")
-#
 st.markdown(
     """
     Ingresa un texto de noticia y selecciona el modelo con el cual quieres clasificarlo como **real** o **fake** junto con sus puntajes de confianza.
