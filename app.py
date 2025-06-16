@@ -134,7 +134,7 @@ elif page == "2️⃣ Dataset EDA":
         """
     )
 def load_data():
-        ds = load_dataset("ErfanMoosaviMonazzah/fake-news-detection")
+        ds = load_dataset("ErfanMoosaviMonazzah/fake-news-detection-English")
         # convert to pandas
         df = pd.DataFrame(ds["train"])
         return df
