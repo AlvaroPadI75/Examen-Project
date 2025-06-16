@@ -19,10 +19,19 @@ from transformers import (
     BertTokenizerFast,
     BertForSequenceClassification
 )
+# —————————————————————————————————————
+# ¡Esta debe ir primero, justo tras los imports!
+# 1) Esto debe ir justo después de los imports
+st.set_page_config(page_title="📰 Fake News Detection", layout="wide")
 
-# 1) Detectar dispositivo
+# 2) Detectar dispositivo antes de cualquier st.*
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# 3) Ahora sí puedes usar st.sidebar.write
 st.sidebar.write(f"Usando dispositivo: {device}")
+
+# 4) Ya tus llamadas a st.title, st.markdown, etc.
+st.title("📰 Fake News Detection")
 
 # 2) Cargar y cachear los 3 modelos desde tu repo único en HF con subfolders
 @st.cache_resource(show_spinner=False)
