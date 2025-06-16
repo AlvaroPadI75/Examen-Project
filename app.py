@@ -47,7 +47,7 @@ def load_models():
 models = load_models()
 #
 # 3) Funciones de inferencia
- def predict_t5(text: str):
+def predict_t5(text: str):
     # 1) Desempaqueta tokenizer + modelo + ids
     tok, mod, fake_id, real_id = models["T5"]
 
