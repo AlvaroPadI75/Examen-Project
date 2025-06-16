@@ -47,19 +47,36 @@ def load_models():
 models = load_models()
 #
 # 3) Funciones de inferencia
-def predict_t5(text: str):
+ def predict_t5(text: str):
+    # 1) Desempaqueta tokenizer + modelo + ids
     tok, mod, fake_id, real_id = models["T5"]
-    inputs = tok("classify: " + text,
-                 return_tensors="pt",
-                 truncation=True,
-                 max_length=256).to(device)
-    with torch.no_grad():
-        logits = mod(**inputs).logits  # [1, seq_len, vocab_size]
-    probs    = torch.softmax(logits[:, 0, :], dim=-1)[0]
-    p_fake   = probs[fake_id].item()
-    p_real   = probs[real_id].item()
-    label    = "fake" if p_fake > p_real else "real"
-    return label, {"fake": p_fake, "real": p_real}
+
+    # 2) Tokenización y envío a device
+    inputs = tok(
+        "classify fake or real news: " + text,
+        return_tensors="pt",
+        truncation=True,
+        max_length=256
+    ).to(device)
+
+    # 3) Generación de la salida (real o fake)
+    generated = mod.generate(
+        input_ids      = inputs.input_ids,
+        attention_mask = inputs.attention_mask,
+        max_new_tokens = 2,
+        num_beams      = 5,
+        early_stopping = True,
+    )
+
+    # 4) Decodifica y limpia el string
+    pred = tok.decode(generated[0], skip_special_tokens=True).strip().lower()
+
+    # 5) Monta un diccionario de “confianzas” ficticias
+    conf = {"real": 0.0, "fake": 0.0}
+    if pred in conf:
+        conf[pred] = 1.0
+
+    return pred, conf
 #
 def predict_cls(text: str, model_key: str):
     tok, mod = models[model_key]
