@@ -16,6 +16,7 @@ st.set_page_config(page_title="📰 Fake News Detection", layout="wide")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 st.sidebar.write(f"Usando dispositivo: {device}")
 st.title("📰 Fake News Detection")
+@st.cache_resource(show_spinner=False)
 def load_models():
     models = {}
     # — T5 seq2seq (Fake/Real)
@@ -90,24 +91,29 @@ def predict_cls(text: str, model_key: str):
     label  = max(conf, key=conf.get)
     return label, conf
 #
-st.markdown(
-    """
-    Ingresa un texto de noticia y selecciona el modelo con el cual quieres clasificarlo como **real** o **fake** junto con sus puntajes de confianza.
-    """
-)
-#
-model_choice = st.selectbox("Selecciona modelo", ["T5", "DistilBERT", "BERT"])
-text_input   = st.text_area("Texto de noticia:", height=200)
-#
-if st.button("🔍 Predecir"):
-    if not text_input.strip():
-        st.warning("Por favor ingresa algún texto antes de predecir.")
-    else:
-        with st.spinner(f"Analizando con {model_choice}..."):
-            if model_choice == "T5":
-                label, conf = predict_t5(text_input)
-            else:
-                label, conf = predict_cls(text_input, model_choice)
-        st.subheader(f"**Predicción:** {label}")
-        st.write("**Confianza:**")
-        st.json(conf)
+# ————————————— SIDEBAR: NAVEGACIÓN —————————————
+st.sidebar.title("Navegación")
+page = st.sidebar.radio("", ["1️⃣ Inference", "2️⃣ Dataset EDA", "3️⃣ Hyperparam Tuning", "4️⃣ Model Analysis"])
+
+# ————————————— PÁGINA 1: INTERFAZ DE INFERENCIA —————————————
+if page == "1️⃣ Inference":
+    st.title("📰 Fake News Detection – Inference")
+    st.markdown(
+        "Ingresa un texto de noticia y selecciona el modelo en la barra lateral."
+    )
+    model_choice = st.sidebar.selectbox("Modelo", ["T5", "DistilBERT", "BERT"])
+    text_input   = st.text_area("🖋️ Texto de noticia:", height=200)
+
+    if st.button("🔍 Predecir"):
+        if not text_input.strip():
+            st.warning("Por favor ingresa algún texto antes de predecir.")
+        else:
+            with st.spinner(f"Analizando con {model_choice}..."):
+                if model_choice == "T5":
+                    label, conf = predict_t5(text_input)
+                else:
+                    label, conf = predict_cls(text_input, model_choice)
+            st.subheader(f"**Predicción:** {label.upper()}")
+            st.write("**Confianzas:**")
+            st.json(conf)
+
