@@ -19,7 +19,12 @@ from transformers import (
     BertTokenizerFast,
     BertForSequenceClassification
 )
+
+# ——————————————————————————————————————
+# ¡Ésta tiene que ser la PRIMERA llamada a Streamlit!
 st.set_page_config(page_title="📰 Fake News Detection", layout="wide")
+# ——————————————————————————————————————
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 st.sidebar.write(f"Usando dispositivo: {device}")
 st.title("📰 Fake News Detection")
