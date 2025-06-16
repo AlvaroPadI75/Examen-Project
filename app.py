@@ -133,7 +133,7 @@ elif page == "2️⃣ Dataset EDA":
         - **Sample noisy / ambiguous texts**
         """
     )
-    def load_data():
+def load_data():
         ds = load_dataset("ErfanMoosaviMonazzah/fake-news-detection")
         # convert to pandas
         df = pd.DataFrame(ds["train"])
