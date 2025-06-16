@@ -116,4 +116,25 @@ if page == "1️⃣ Inference":
             st.subheader(f"**Predicción:** {label.upper()}")
             st.write("**Confianzas:**")
             st.json(conf)
+            
+elif page == "2️⃣ Dataset EDA":
+    st.title("📊 Exploratory Data Analysis")
+    ds = load_dataset("ErfanMoosaviMonazzah/fake-news-detection-dataset-English")
+    df = pd.DataFrame(ds["train"])
+    st.markdown("**Distribución de etiquetas (train)**")
+    fig, ax = plt.subplots()
+    df["label"].map({0:"real",1:"fake"}).value_counts().plot.bar(ax=ax)
+    ax.set_ylabel("Count")
+    st.pyplot(fig)
 
+    st.markdown("**Histograma de longitud de texto**")
+    df["length"] = df["text"].str.split().map(len)
+    fig2, ax2 = plt.subplots()
+    df["length"].hist(bins=30, ax=ax2)
+    ax2.set_xlabel("Número de palabras")
+    st.pyplot(fig2)
+
+    st.markdown("**Ejemplos**")
+    st.write(df.sample(5)[["text","label"]].rename(columns={"label":"y_true"}))
+
+# ————
