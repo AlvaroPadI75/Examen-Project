@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-# app.py
 import streamlit as st
 import torch
 from transformers import (
