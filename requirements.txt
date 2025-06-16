@@ -1,10 +1,18 @@
+# Core
 streamlit
+
+# Modelos
 torch
 transformers
 safetensors
 sentencepiece
+huggingface-hub
 
+# Dataset EDA
 datasets
 pandas
 matplotlib
 seaborn
+
+# Para el reporte y métricas
+scikit-learn
