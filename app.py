@@ -59,7 +59,6 @@ models = load_models()
         max_length=256
     ).to(device)
 
-    # 3) Generación de la salida (real o fake)
     generated = mod.generate(
         input_ids      = inputs.input_ids,
         attention_mask = inputs.attention_mask,
@@ -67,6 +66,14 @@ models = load_models()
         num_beams      = 5,
         early_stopping = True,
     )
+
+    pred = tok.decode(generated[0], skip_special_tokens=True).strip().lower()
+    conf = {"real": 0.0, "fake": 0.0}
+    if pred in conf:
+        conf[pred] = 1.0
+
+    return pred, conf
+
 #
 def predict_cls(text: str, model_key: str):
     tok, mod = models[model_key]
