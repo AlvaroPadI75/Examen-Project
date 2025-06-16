@@ -67,16 +67,6 @@ models = load_models()
         num_beams      = 5,
         early_stopping = True,
     )
-
-    # 4) Decodifica y limpia el string
-    pred = tok.decode(generated[0], skip_special_tokens=True).strip().lower()
-
-    # 5) Monta un diccionario de “confianzas” ficticias
-    conf = {"real": 0.0, "fake": 0.0}
-    if pred in conf:
-        conf[pred] = 1.0
-
-    return pred, conf
 #
 def predict_cls(text: str, model_key: str):
     tok, mod = models[model_key]
