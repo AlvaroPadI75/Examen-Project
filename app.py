@@ -127,71 +127,111 @@ if page == "1️⃣ Inference":
             
 elif page == "2️⃣ Dataset EDA":
     st.title("📊 Exploratory Data Analysis")
-    st.write(
-        """
-        Here we explore the structure and content of our Fake-News dataset:
-        - **Class distribution**  
-        - **Token-length histogram**  
-        - **Word clouds**  
-        - **Sample noisy / ambiguous texts**
-        """
-    )
-    @st.cache_data(show_spinner="Loading data...")
+    st.write("""
+    Analyzing the Fake News Dataset:
+    - Class distribution
+    - Text length analysis
+    - Content visualization
+    """)
+
+    @st.cache_data(show_spinner="Loading dataset...")
     def load_data():
         try:
-            # Versión simplificada con solo el método más confiable
-            dataset = load_dataset(
-                "ErfanMoosaviMonazzah/fake-news-detection-dataset-English",
-                split="train",
-                verification_mode="no_checks"
-            )
-            df = dataset.to_pandas()
+            # Método 1: Cargar directamente con datasets
+            try:
+                # Especificamos exactamente el split que queremos
+                dataset = load_dataset(
+                    "ErfanMoosaviMonazzah/fake-news-detection-dataset-English",
+                    split="train",  # Especificamos el split directamente
+                    verification_mode="no_checks"  # Evita verificaciones que pueden fallar
+                )
+                df = dataset.to_pandas()
+                
+                # Verificación básica de columnas
+                if "text" not in df.columns:
+                    if "article" in df.columns:
+                        df["text"] = df["article"]
+                    elif "content" in df.columns:
+                        df["text"] = df["content"]
+                
+                if "label" not in df.columns:
+                    if "is_fake" in df.columns:
+                        df["label"] = df["is_fake"]
+                    elif "target" in df.columns:
+                        df["label"] = df["target"]
+                
+                return df[["text", "label"]].dropna()
             
-            # Estandarizar nombres de columnas
-            df = df.rename(columns={
-                "article": "text",
-                "content": "text",
-                "is_fake": "label",
-                "target": "label"
-            })
-            
-            return df[["text", "label"]].dropna()
-            
-        except Exception as e:
-            st.error(f"Error loading data: {str(e)}")
-            return pd.DataFrame({
+            except Exception as e:
+                st.warning(f"Primary load failed: {str(e)}")
+                raise
+                
+        except Exception:
+            # Método 2: Datos de ejemplo embebidos
+            sample_data = {
                 "text": [
                     "Scientific study confirms benefits of exercise (Real)",
-                    "Government confirms alien contact (Fake)"
+                    "Aliens visiting Earth, government confirms (Fake)",
+                    "New economic policy announced (Real)",
+                    "Celebrity reveals shocking secret (Fake)"
                 ],
-                "label": [1, 0]
-            })
+                "label": [1, 0, 1, 0]
+            }
+            return pd.DataFrame(sample_data)
 
-    # Carga de datos
-    df = load_data()
-    
-    # Limpieza mínima esencial
-    df["label"] = df["label"].apply(lambda x: 0 if str(x).lower() in ["fake", "false", "0"] else 1)
-    
-    # Solo 2 visualizaciones principales (eliminé word clouds y ejemplos redundantes)
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("Class Distribution")
-        fig = px.pie(
-            df, 
-            names=df["label"].map({0: "Fake", 1: "Real"}),
-            color_discrete_sequence=["#FF5733", "#33FF57"]
+    # Cargar y procesar datos
+    try:
+        df = load_data()
+        
+        # Conversión robusta de labels
+        df["label"] = df["label"].apply(
+            lambda x: 0 if str(x).lower() in ["fake", "false", "0", "no"] else 1
         )
-        st.plotly_chart(fig, use_container_width=True)
+        
+        # Visualizaciones
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Class Distribution")
+            fig1 = px.pie(
+                df,
+                names=df["label"].map({0: "Fake", 1: "Real"}),
+                color_discrete_sequence=["#FF5733", "#33FF57"]
+            )
+            st.plotly_chart(fig1, use_container_width=True)
+        
+        with col2:
+            st.subheader("Text Length Distribution")
+            df["length"] = df["text"].str.split().str.len()
+            fig2 = px.histogram(
+                df,
+                x="length",
+                color="label",
+                color_discrete_map={0: "#FF5733", 1: "#33FF57"},
+                nbins=30
+            )
+            st.plotly_chart(fig2, use_container_width=True)
+        
+        # Word Cloud opcional
+        if st.checkbox("Show Word Clouds"):
+            col1, col2 = st.columns(2)
+            with col1:
+                st.write("Fake News Word Cloud")
+                fake_text = " ".join(df[df["label"]==0]["text"].astype(str))
+                if fake_text.strip():
+                    wc = WordCloud(width=600, height=300).generate(fake_text)
+                    plt.imshow(wc)
+                    plt.axis("off")
+                    st.pyplot(plt)
+            
+            with col2:
+                st.write("Real News Word Cloud")
+                real_text = " ".join(df[df["label"]==1]["text"].astype(str))
+                if real_text.strip():
+                    wc = WordCloud(width=600, height=300).generate(real_text)
+                    plt.imshow(wc)
+                    plt.axis("off")
+                    st.pyplot(plt)
     
-    with col2:
-        st.subheader("Text Length")
-        df["length"] = df["text"].str.split().str.len()
-        fig = px.histogram(
-            df, 
-            x="length", 
-            color="label",
-            color_discrete_map={0: "#FF5733", 1: "#33FF57"}
-        )
-        st.plotly_chart(fig, use_container_width=True)
+    except Exception as e:
+        st.error(f"Failed to process data: {str(e)}")
