@@ -1,22 +1,24 @@
 streamlit
 watchdog
 # Modelos
-torch
-transformers
 safetensors
 sentencepiece
-huggingface-hub
+# Core
+streamlit
+
+# Models
+torch
+transformers
+datasets>=2.13.0
+huggingface-hub>=0.17.0
+fsspec<2023.2.0      
+pandas
+matplotlib
+seaborn
+plotly
+wordcloud
+scikit-learn
 
 # Para cargar y explorar datasets
 datasets
-pandas
 pyarrow
-fsspec
-plotly
-wordcloud
-# Gráficos
-matplotlib
-seaborn
-
-# Métricas
-scikit-learn
