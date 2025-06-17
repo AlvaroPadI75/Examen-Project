@@ -23,6 +23,19 @@ from huggingface_hub import hf_hub_download
 from transformers import TrainingArguments, Trainer
 import optuna
 
+def load_model(model_type):
+    # Simplemente devolvemos el modelo ya cargado en memoria
+    _, model = models[model_type]
+    return model
+
+# Por ahora, usamos datasets de ejemplo o los mismos df de tu EDA:
+train_dataset = load_dataset(..., split="train[:80%]")  # el 80% para train
+val_dataset   = load_dataset(..., split="train[80%:]")  # el 20% para val
+
+def compute_metrics(eval_pred):
+    logits, labels = eval_pred
+    preds = np.argmax(logits, axis=-1)
+    return {"accuracy": (preds == labels).mean()}
 # Función objective corregida
 def objective(trial, model_type, metric):
     # 1. Definir parámetros de entrenamiento a optimizar
