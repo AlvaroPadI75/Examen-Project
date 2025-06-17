@@ -138,14 +138,15 @@ elif page == "2️⃣ Dataset EDA":
     )
 
     @st.cache_data(show_spinner=False)
-def load_data():
-    # this will download train.csv from the HF repo
-    path = hf_hub_download(
-        repo_id="ErfanMoosaviMonazzah/fake-news-detection-dataset-English",
-        filename="train.csv"
-    )
-    return pd.read_csv(path)
+    def load_data():
+        # this will download train.csv from the HF repo
+        path = hf_hub_download(
+            repo_id="ErfanMoosaviMonazzah/fake-news-detection-dataset-English",
+            filename="train.csv"
+        )
+        return pd.read_csv(path)
 
+    # Ahora sí llamamos a load_data() dentro del elif
     df = load_data()
 
     # 1) Class distribution
@@ -154,23 +155,24 @@ def load_data():
         x="label",
         color="label",
         title="Class Distribution: Fake vs Real",
-        labels={"label":"News Type"},
+        labels={"label": "News Type"},
         width=700, height=400
     )
     st.plotly_chart(fig1, use_container_width=True)
 
     # 2) Token-length histogram
+    df["token_count"] = df["text"].str.split().str.len()
     fig2 = px.histogram(
         df,
         x="token_count",
         nbins=50,
         title="Token Count per Article",
-        labels={"token_count":"Number of Tokens"},
+        labels={"token_count": "Number of Tokens"},
         width=700, height=400
     )
     st.plotly_chart(fig2, use_container_width=True)
 
-    # 3) Word Clouds
+    # 3) Word clouds
     col1, col2 = st.columns(2)
     with col1:
         st.subheader("🗯️ Word Cloud: Fake News")
@@ -190,5 +192,6 @@ def load_data():
     # 4) Sample noisy / ambiguous texts
     st.subheader("📝 Sample Noisy / Ambiguous Texts")
     for _, row in df.sample(5, random_state=42).iterrows():
-        lbl = "Real" if row["label"]==1 else "Fake"
+        lbl = "Real" if row["label"] == 1 else "Fake"
         st.markdown(f"**Label:** {lbl}  \n{row['text'][:200]}…")
+
