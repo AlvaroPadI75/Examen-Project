@@ -152,130 +152,175 @@ elif page == "2️⃣ Dataset EDA":
     @st.cache_data(show_spinner=False)
     def load_data():
         try:
-            # Intento 1: Descargar el CSV directamente
+            # Intento 1: Cargar desde datasets de Hugging Face
             try:
-                path = hf_hub_download(
-                    repo_id="ErfanMoosaviMonazzah/fake-news-detection-dataset-English",
-                    filename="train.csv",
-                    repo_type="dataset"  # ¡Esto es crucial!
-                )
-                df = pd.read_csv(path)
-                return df
-            except:
-                # Intento 2: Cargar a través de la API de datasets
                 dataset = load_dataset("ErfanMoosaviMonazzah/fake-news-detection-dataset-English")
-                return dataset["train"].to_pandas()
+                df = dataset["train"].to_pandas()
+                
+                # Verificar y limpiar datos
+                if "label" not in df.columns or "text" not in df.columns:
+                    raise ValueError("Columnas requeridas no encontradas")
+                    
+                return df
+                
+            except Exception as e:
+                st.warning(f"No se pudo cargar dataset directamente: {str(e)}")
+                
+                # Intento 2: Descargar CSV manualmente
+                try:
+                    path = hf_hub_download(
+                        repo_id="ErfanMoosaviMonazzah/fake-news-detection-dataset-English",
+                        filename="train.csv",
+                        repo_type="dataset"
+                    )
+                    df = pd.read_csv(path)
+                    return df
+                    
+                except Exception as e:
+                    st.warning(f"No se pudo descargar CSV: {str(e)}")
+                    
+                    # Datos de ejemplo como fallback
+                    return pd.DataFrame({
+                        "text": [
+                            "Scientists confirm climate change is accelerating (Real)",
+                            "Aliens visiting Earth, government confirms (Fake)",
+                            "New economic policy announced by president (Real)",
+                            "Celebrity couple announces surprise wedding (Fake)"
+                        ],
+                        "label": [1, 0, 1, 0]
+                    })
+                    
         except Exception as e:
-            st.error(f"Error loading dataset: {str(e)}")
-            # Datos de ejemplo como fallback
-            return pd.DataFrame({
-                "text": [
-                    "Scientists confirm climate change is accelerating",
-                    "Aliens visiting Earth, government confirms",
-                    "New economic policy announced by president",
-                    "Celebrity couple announces surprise wedding"
-                ],
-                "label": [1, 0, 1, 0]  # 1=Real, 0=Fake
-            })
+            st.error(f"Error crítico: {str(e)}")
+            return None
 
-    # Cargar datos (correctamente indentado dentro del elif)
-    df = load_data()
-
-    # Verificar y preparar los datos
-    if "label" not in df.columns or "text" not in df.columns:
-        st.error("El dataset no tiene las columnas requeridas ('text' y 'label')")
+    # Cargar datos con spinner
+    with st.spinner("Cargando datos..."):
+        df = load_data()
+    
+    if df is None:
+        st.error("No se pudieron cargar los datos. Por favor intente más tarde.")
         st.stop()
 
-    # Convertir labels si son strings
+    # Limpieza de datos
+    df = df.dropna(subset=["text", "label"])  # Eliminar filas con valores nulos
+    
+    # Convertir labels a numérico si es necesario
     if df["label"].dtype == object:
-        df["label"] = df["label"].map({"fake": 0, "real": 1, "FAKE": 0, "REAL": 1})
+        df["label"] = df["label"].map({
+            "real": 1, "REAL": 1, "Real": 1, "1": 1,
+            "fake": 0, "FAKE": 0, "Fake": 0, "0": 0
+        }).astype(int)
+
+    # Verificar datos después de limpieza
+    if len(df) == 0:
+        st.error("No hay datos válidos después de la limpieza.")
+        st.stop()
 
     # 1) Distribución de clases
     st.subheader("📊 Class Distribution: Fake vs Real")
-    fig1 = px.pie(
-        df, 
-        names=df["label"].map({0: "Fake", 1: "Real"}),
-        hole=0.3,
-        color_discrete_sequence=["#FF5733", "#33FF57"],
-        title="Proportion of Fake vs Real News"
-    )
-    fig1.update_traces(textposition="inside", textinfo="percent+label")
-    st.plotly_chart(fig1, use_container_width=True)
+    try:
+        fig1 = px.pie(
+            df, 
+            names=df["label"].map({0: "Fake", 1: "Real"}),
+            hole=0.3,
+            color_discrete_sequence=["#FF5733", "#33FF57"],
+            title="Proportion of Fake vs Real News"
+        )
+        fig1.update_traces(textposition="inside", textinfo="percent+label")
+        st.plotly_chart(fig1, use_container_width=True)
+    except Exception as e:
+        st.warning(f"No se pudo generar gráfico de distribución: {str(e)}")
 
     # 2) Histograma de longitud de tokens
     st.subheader("📏 Token Count Distribution")
-    df["token_count"] = df["text"].str.split().str.len()
-    fig2 = px.histogram(
-        df,
-        x="token_count",
-        nbins=50,
-        color="label",
-        color_discrete_map={0: "#FF5733", 1: "#33FF57"},
-        labels={"token_count": "Number of Tokens", "label": "News Type"},
-        category_orders={"label": [0, 1]},
-        barmode="overlay",
-        opacity=0.7,
-        title="Distribution of Article Lengths (in Tokens)"
-    )
-    fig2.update_layout(legend_title_text="News Type")
-    st.plotly_chart(fig2, use_container_width=True)
+    try:
+        df["token_count"] = df["text"].str.split().str.len()
+        fig2 = px.histogram(
+            df,
+            x="token_count",
+            nbins=50,
+            color="label",
+            color_discrete_map={0: "#FF5733", 1: "#33FF57"},
+            labels={"token_count": "Number of Tokens", "label": "News Type"},
+            category_orders={"label": [0, 1]},
+            barmode="overlay",
+            opacity=0.7,
+            title="Distribution of Article Lengths (in Tokens)"
+        )
+        fig2.update_layout(legend_title_text="News Type")
+        st.plotly_chart(fig2, use_container_width=True)
+    except Exception as e:
+        st.warning(f"No se pudo generar histograma: {str(e)}")
 
     # 3) Nubes de palabras
     st.subheader("🗯️ Word Clouds by News Type")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("**Fake News Word Cloud**")
-        fake_text = " ".join(df[df["label"]==0]["text"].astype(str).tolist())
-        wc_fake = WordCloud(
-            width=500, 
-            height=300, 
-            background_color="white",
-            colormap="Reds",
-            stopwords=set(STOPWORDS)
-        ).generate(fake_text)
-        fig_fake, ax_fake = plt.subplots(figsize=(8, 5))
-        ax_fake.imshow(wc_fake, interpolation="bilinear")
-        ax_fake.axis("off")
-        st.pyplot(fig_fake)
-    
-    with col2:
-        st.markdown("**Real News Word Cloud**")
-        real_text = " ".join(df[df["label"]==1]["text"].astype(str).tolist())
-        wc_real = WordCloud(
-            width=500, 
-            height=300, 
-            background_color="white",
-            colormap="Greens",
-            stopwords=set(STOPWORDS)
-        ).generate(real_text)
-        fig_real, ax_real = plt.subplots(figsize=(8, 5))
-        ax_real.imshow(wc_real, interpolation="bilinear")
-        ax_real.axis("off")
-        st.pyplot(fig_real)
+    try:
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**Fake News Word Cloud**")
+            fake_text = " ".join(df[df["label"]==0]["text"].astype(str).tolist())
+            if fake_text.strip():
+                wc_fake = WordCloud(
+                    width=500, 
+                    height=300, 
+                    background_color="white",
+                    colormap="Reds",
+                    stopwords=set(STOPWORDS)
+                ).generate(fake_text)
+                fig_fake, ax_fake = plt.subplots(figsize=(8, 5))
+                ax_fake.imshow(wc_fake, interpolation="bilinear")
+                ax_fake.axis("off")
+                st.pyplot(fig_fake)
+            else:
+                st.warning("No hay textos de noticias falsas disponibles")
+        
+        with col2:
+            st.markdown("**Real News Word Cloud**")
+            real_text = " ".join(df[df["label"]==1]["text"].astype(str).tolist())
+            if real_text.strip():
+                wc_real = WordCloud(
+                    width=500, 
+                    height=300, 
+                    background_color="white",
+                    colormap="Greens",
+                    stopwords=set(STOPWORDS)
+                ).generate(real_text)
+                fig_real, ax_real = plt.subplots(figsize=(8, 5))
+                ax_real.imshow(wc_real, interpolation="bilinear")
+                ax_real.axis("off")
+                st.pyplot(fig_real)
+            else:
+                st.warning("No hay textos de noticias reales disponibles")
+    except Exception as e:
+        st.warning(f"No se pudo generar nubes de palabras: {str(e)}")
 
     # 4) Ejemplos de texto
     st.subheader("📝 Sample News Texts")
-    tab1, tab2 = st.tabs(["Real News", "Fake News"])
-    
-    with tab1:
-        st.markdown("**Examples of Real News:**")
-        real_samples = df[df["label"]==1].sample(3, random_state=42)
-        for idx, row in real_samples.iterrows():
-            st.markdown(f"""
-            <div style="background-color:#e6ffe6; padding:10px; border-radius:5px; margin:10px 0;">
-            <b>Sample {idx}</b><br>
-            {row['text'][:300]}...
-            </div>
-            """, unsafe_allow_html=True)
-    
-    with tab2:
-        st.markdown("**Examples of Fake News:**")
-        fake_samples = df[df["label"]==0].sample(3, random_state=42)
-        for idx, row in fake_samples.iterrows():
-            st.markdown(f"""
-            <div style="background-color:#ffe6e6; padding:10px; border-radius:5px; margin:10px 0;">
-            <b>Sample {idx}</b><br>
-            {row['text'][:300]}...
-            </div>
-            """, unsafe_allow_html=True)
+    try:
+        tab1, tab2 = st.tabs(["Real News", "Fake News"])
+        
+        with tab1:
+            st.markdown("**Examples of Real News:**")
+            real_samples = df[df["label"]==1].sample(min(3, len(df[df["label"]==1])), random_state=42)
+            for idx, row in real_samples.iterrows():
+                st.markdown(f"""
+                <div style="background-color:#e6ffe6; padding:10px; border-radius:5px; margin:10px 0;">
+                <b>Sample {idx}</b><br>
+                {row['text'][:300]}...
+                </div>
+                """, unsafe_allow_html=True)
+        
+        with tab2:
+            st.markdown("**Examples of Fake News:**")
+            fake_samples = df[df["label"]==0].sample(min(3, len(df[df["label"]==0])), random_state=42)
+            for idx, row in fake_samples.iterrows():
+                st.markdown(f"""
+                <div style="background-color:#ffe6e6; padding:10px; border-radius:5px; margin:10px 0;">
+                <b>Sample {idx}</b><br>
+                {row['text'][:300]}...
+                </div>
+                """, unsafe_allow_html=True)
+    except Exception as e:
+        st.warning(f"No se pudo mostrar ejemplos de texto: {str(e)}")
