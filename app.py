@@ -39,7 +39,7 @@ def objective(trial, model_type, metric):
     # 3. Training configuration
     training_args = TrainingArguments(
         output_dir=f"./results_{model_type}",
-        evaluation_strategy="epoch",
+        eval_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
         metric_for_best_model=metric,
