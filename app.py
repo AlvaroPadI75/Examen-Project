@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.express as px
 from wordcloud import WordCloud
+from huggingface_hub import hf_hub_download
 # ——————————————————————————————————————
 # ¡Ésta tiene que ser la PRIMERA llamada a Streamlit!
 st.set_page_config(page_title="📰 Fake News Detection", layout="wide")
@@ -137,13 +138,13 @@ elif page == "2️⃣ Dataset EDA":
     )
 
     @st.cache_data(show_spinner=False)
-    def load_data():
-        # Use the *public* HF dataset name (no “-English” suffix):
-        ds = load_dataset("ErfanMoosaviMonazzah/fake-news-detection-dataset-English", split="train")
-        df = pd.DataFrame(ds)
-        # add a token-length column
-        df["token_count"] = df["text"].str.split().str.len()
-        return df
+def load_data():
+    # this will download train.csv from the HF repo
+    path = hf_hub_download(
+        repo_id="ErfanMoosaviMonazzah/fake-news-detection-dataset-English",
+        filename="train.csv"
+    )
+    return pd.read_csv(path)
 
     df = load_data()
 
