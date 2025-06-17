@@ -237,110 +237,156 @@ elif page == "2️⃣ Dataset EDA":
         st.error(f"Failed to process data: {str(e)}")
 
 elif page == "3️⃣ Hyperparam Tuning":
-    st.title("⚙️ Hyperparameter Optimization")
+    st.title("⚙️ Optimización de Hiperparámetros")
     st.markdown("""
-    ## Fine-tuning de Modelos
-    Optimización de hiperparámetros para los modelos:
-    - DistilBERT
-    - BERT
-    - T5
+    ## Configuración del Proceso de Optimización
+    Ajuste fino de los parámetros del modelo para maximizar el rendimiento
     """)
-    
-    model_type = st.selectbox("Selecciona el modelo a optimizar", 
-                            ["DistilBERT", "BERT", "T5"])
-    
-    # Configuración común
-    st.subheader("🔧 Configuración del Estudio")
-    n_trials = st.slider("Número de trials", 10, 100, 20)
-    metric = st.selectbox("Métrica a optimizar", 
-                         ["f1", "accuracy", "precision", "recall"])
-    
-    if st.button("🚀 Ejecutar Optimización"):
-        with st.spinner(f"Optimizando {model_type} (esto puede tomar varios minutos)..."):
-            best_params = run_optuna_study(model_type, n_trials, metric)
-            
-            st.success("¡Optimización completada!")
-            st.subheader("🎯 Mejores Parámetros Encontrados")
-            st.json(best_params)
-            
-            # Visualización de resultados
-            display_results(model_type)
 
-def run_optuna_study(model_type, n_trials, metric):
-    import optuna
-    from transformers import Trainer, TrainingArguments
-    
-    def objective(trial):
-        # Parámetros comunes
-        params = {
-            "learning_rate": trial.suggest_float("learning_rate", 1e-6, 1e-4, log=True),
-            "per_device_train_batch_size": trial.suggest_categorical("batch_size", [8, 16, 32]),
-            "num_train_epochs": trial.suggest_int("epochs", 1, 5),
-            "weight_decay": trial.suggest_float("weight_decay", 0.0, 0.3),
-        }
-        
-        # Parámetros específicos por modelo
-        if model_type == "DistilBERT":
-            params.update({
-                "hidden_dropout_prob": trial.suggest_float("hidden_dropout", 0.1, 0.5),
-            })
-        elif model_type == "BERT":
-            params.update({
-                "attention_probs_dropout_prob": trial.suggest_float("attention_dropout", 0.1, 0.3),
-            })
-        elif model_type == "T5":
-            params.update({
-                "dropout_rate": trial.suggest_float("dropout", 0.1, 0.4),
-            })
-        
-        # Configuración de entrenamiento
-        training_args = TrainingArguments(
-            output_dir=f"./results_{model_type}",
-            evaluation_strategy="epoch",
-            save_strategy="epoch",
-            load_best_model_at_end=True,
-            metric_for_best_model=metric,
-            **params
-        )
-        
-        # Cargar modelo y datasets (adaptar según tu implementación)
-        model = load_your_model(model_type)  # Reemplaza con tu función
-        trainer = Trainer(
-            model=model,
-            args=training_args,
-            train_dataset=train_dataset,
-            eval_dataset=val_dataset,
-            compute_metrics=compute_metrics  # Asegúrate de definir esta función
-        )
-        
-        trainer.train()
-        eval_results = trainer.evaluate()
-        return eval_results[f"eval_{metric}"]
-    
-    study = optuna.create_study(direction="maximize")
-    study.optimize(objective, n_trials=n_trials)
-    return study.best_params
-
-def display_results(model_type):
-    # Gráficos de optimización
-    st.subheader("📈 Resultados de la Optimización")
-    
-    col1, col2 = st.columns(2)
+    # 1. Selector de modelo y configuración
+    col1, col2, col3 = st.columns(3)
     with col1:
-        st.plotly_chart(px.line(
-            x=range(1, n_trials+1),
-            y=study.best_trials,
-            title="Evolución de la Métrica",
-            labels={"x": "Trial", "y": metric}
-        ), use_container_width=True)
+        model_type = st.selectbox(
+            "Modelo a optimizar",
+            ["DistilBERT", "BERT", "T5"],
+            help="Selecciona qué modelo deseas optimizar"
+        )
     
     with col2:
-        st.plotly_chart(px.parallel_coordinates(
-            study.trials_dataframe(),
-            color=f"eval_{metric}",
-            title="Combinación de Parámetros"
-        ), use_container_width=True)
+        n_trials = st.slider(
+            "Número de trials",
+            min_value=5,
+            max_value=50,
+            value=15,
+            help="Cantidad de experimentos a realizar"
+        )
     
-    # Exportar resultados
-    if st.button("💾 Exportar Configuración Óptima"):
-        save_best_config(model_type, study.best_params)
+    with col3:
+        metric = st.selectbox(
+            "Métrica objetivo",
+            ["f1", "accuracy", "precision", "recall"],
+            index=0,
+            help="Métrica principal a optimizar"
+        )
+
+    # 2. Panel de parámetros con explicaciones
+    with st.expander("📋 Detalles de los Parámetros a Optimizar", expanded=True):
+        st.markdown("""
+        | Parámetro          | Rango               | Importancia               |
+        |--------------------|---------------------|---------------------------|
+        | Learning Rate      | 1e-6 a 1e-4         | Controla la velocidad de aprendizaje |
+        | Batch Size         | 8, 16, 32           | Afecta memoria y estabilidad |
+        | Epochs             | 1 a 5               | Evitar sobreentrenamiento  |
+        | Weight Decay       | 0.0 a 0.3           | Regularización L2         |
+        | Dropout            | Modelo-específico   | Prevenir overfitting      |
+        """)
+
+    # 3. Función principal de optimización
+    if st.button("🚀 Ejecutar Optimización", type="primary"):
+        with st.spinner(f"Optimizando {model_type} - Esto puede tomar varios minutos..."):
+            try:
+                # Configuración de Optuna
+                study = optuna.create_study(
+                    direction="maximize",
+                    sampler=optuna.samplers.TPESampler(),
+                    pruner=optuna.pruners.HyperbandPruner()
+                )
+                
+                # Ejecutar optimización
+                study.optimize(
+                    lambda trial: objective(trial, model_type, metric),
+                    n_trials=n_trials,
+                    show_progress_bar=True
+                )
+
+                # Mostrar resultados
+                st.success("Optimización completada!")
+                
+                # 4. Visualización de resultados
+                st.subheader("📊 Resultados de la Optimización")
+                
+                # Gráfico de evolución
+                fig1 = px.line(
+                    study.trials_dataframe(),
+                    x="number",
+                    y="value",
+                    title=f"Evolución de la métrica {metric}",
+                    labels={"value": metric, "number": "Trial"}
+                )
+                st.plotly_chart(fig1, use_container_width=True)
+                
+                # Mejores parámetros
+                st.subheader("🎯 Mejores Parámetros Encontrados")
+                best_params = study.best_params
+                st.json(best_params)
+                
+                # Gráfico de importancia
+                fig2 = optuna.visualization.plot_param_importances(study)
+                st.pyplot(fig2)
+                
+                # 5. Explicación de resultados
+                with st.expander("🔍 Interpretación de Resultados"):
+                    st.markdown(f"""
+                    - **Mejor {metric} obtenido**: {study.best_value:.4f}
+                    - **Trial número**: {study.best_trial.number}
+                    - **Parámetros clave**:
+                        - Learning Rate: {best_params.get('learning_rate', 'N/A')}
+                        - Batch Size: {best_params.get('per_device_train_batch_size', 'N/A')}
+                    """)
+                    
+                    if model_type == "DistilBERT":
+                        st.write("Para DistilBERT, el dropout óptimo fue:", best_params.get("hidden_dropout_prob", "N/A"))
+                    elif model_type == "BERT":
+                        st.write("Para BERT, el attention dropout óptimo fue:", best_params.get("attention_probs_dropout_prob", "N/A"))
+                
+                # 6. Opción para guardar resultados
+                if st.button("💾 Guardar Configuración Óptima"):
+                    save_best_config(model_type, best_params)
+                    st.toast("Configuración guardada exitosamente!", icon="✅")
+            
+            except Exception as e:
+                st.error(f"Error durante la optimización: {str(e)}")
+                st.error("Revisa los logs para más detalles")
+
+# Función de optimización (debe estar en el mismo archivo o importarse)
+def objective(trial, model_type, metric):
+    # 1. Definir parámetros a optimizar
+    params = {
+        "learning_rate": trial.suggest_float("learning_rate", 1e-6, 1e-4, log=True),
+        "per_device_train_batch_size": trial.suggest_categorical("batch_size", [8, 16, 32]),
+        "num_train_epochs": trial.suggest_int("epochs", 1, 5),
+        "weight_decay": trial.suggest_float("weight_decay", 0.0, 0.3),
+    }
+    
+    # 2. Parámetros específicos por modelo
+    if model_type == "DistilBERT":
+        params["hidden_dropout_prob"] = trial.suggest_float("hidden_dropout", 0.1, 0.5)
+    elif model_type == "BERT":
+        params["attention_probs_dropout_prob"] = trial.suggest_float("attention_dropout", 0.1, 0.3)
+    elif model_type == "T5":
+        params["dropout_rate"] = trial.suggest_float("dropout", 0.1, 0.4)
+    
+    # 3. Configuración del entrenamiento (adaptar a tu implementación)
+    training_args = TrainingArguments(
+        output_dir=f"./results_{model_type}",
+        evaluation_strategy="epoch",
+        save_strategy="epoch",
+        load_best_model_at_end=True,
+        metric_for_best_model=metric,
+        **params
+    )
+    
+    # 4. Cargar modelo y datasets (implementar según tu caso)
+    model = load_model(model_type)
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=train_dataset,
+        eval_dataset=val_dataset,
+        compute_metrics=compute_metrics
+    )
+    
+    # 5. Entrenamiento y evaluación
+    trainer.train()
+    eval_results = trainer.evaluate()
+    return eval_results[f"eval_{metric}"]
