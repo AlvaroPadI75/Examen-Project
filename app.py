@@ -18,7 +18,7 @@ from wordcloud import WordCloud
 from huggingface_hub import hf_hub_download
 # ——————————————————————————————————————
 def objective(trial, model_type, metric):
-    # 1. Definir parámetros a optimizar
+    # 1. Define parameters to optimize
     params = {
         "learning_rate": trial.suggest_float("learning_rate", 1e-6, 1e-4, log=True),
         "per_device_train_batch_size": trial.suggest_categorical("batch_size", [8, 16, 32]),
@@ -26,7 +26,7 @@ def objective(trial, model_type, metric):
         "weight_decay": trial.suggest_float("weight_decay", 0.0, 0.3),
     }
     
-    # 2. Parámetros específicos por modelo
+    # 2. Model-specific parameters
     if model_type == "DistilBERT":
         params["hidden_dropout_prob"] = trial.suggest_float("hidden_dropout", 0.1, 0.5)
     elif model_type == "BERT":
@@ -34,7 +34,7 @@ def objective(trial, model_type, metric):
     elif model_type == "T5":
         params["dropout_rate"] = trial.suggest_float("dropout", 0.1, 0.4)
     
-    # 3. Configuración del entrenamiento (adaptar a tu implementación)
+    # 3. Training configuration
     training_args = TrainingArguments(
         output_dir=f"./results_{model_type}",
         evaluation_strategy="epoch",
@@ -44,7 +44,7 @@ def objective(trial, model_type, metric):
         **params
     )
     
-    # 4. Cargar modelo y datasets (implementar según tu caso)
+    # 4. Load model and datasets
     model = load_model(model_type)
     trainer = Trainer(
         model=model,
@@ -54,17 +54,17 @@ def objective(trial, model_type, metric):
         compute_metrics=compute_metrics
     )
     
-    # 5. Entrenamiento y evaluación
+    # 5. Training and evaluation
     trainer.train()
     eval_results = trainer.evaluate()
     return eval_results[f"eval_{metric}"]
     
-# ¡Ésta tiene que ser la PRIMERA llamada a Streamlit!
+# This must be the FIRST Streamlit call!
 st.set_page_config(page_title="📰 Fake News Detection", layout="wide")
 # ——————————————————————————————————————
 #
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-st.sidebar.write(f"Usando dispositivo: {device}")
+st.sidebar.write(f"Using device: {device}")
 st.title("📰 Fake News Detection")
 @st.cache_resource(show_spinner=False)
 def load_models():
@@ -88,7 +88,7 @@ def load_models():
     # — BERT classifier
     bert_repo = "Alvaropad1/Fakenews"
     bert_subf = "bert-fakenews"
-    # usamos vocab oficial de bert-base
+    # use official bert-base vocab
     bert_tok  = BertTokenizerFast.from_pretrained("bert-base-uncased")
     bert_mod  = BertForSequenceClassification.from_pretrained(bert_repo, subfolder=bert_subf).to(device)
     models["BERT"] = (bert_tok, bert_mod)
@@ -97,12 +97,12 @@ def load_models():
 #
 models = load_models()
 #
-# 3) Funciones de inferencia
+# 3) Inference functions
 def predict_t5(text: str):
-    # 1) Desempaqueta tokenizer + modelo + ids
+    # 1) Unpack tokenizer + model + ids
     tok, mod, fake_id, real_id = models["T5"]
 
-    # 2) Tokenización y envío a device
+    # 2) Tokenization and send to device
     inputs = tok(
         "classify fake or real news: " + text,
         return_tensors="pt",
@@ -141,30 +141,30 @@ def predict_cls(text: str, model_key: str):
     label  = max(conf, key=conf.get)
     return label, conf
 #
-# ————————————— SIDEBAR: NAVEGACIÓN —————————————
-st.sidebar.title("Navegación")
+# ————————————— SIDEBAR: NAVIGATION —————————————
+st.sidebar.title("Navigation")
 page = st.sidebar.radio("", ["1️⃣ Inference", "2️⃣ Dataset EDA", "3️⃣ Hyperparam Tuning", "4️⃣ Model Analysis"])
 
-# ————————————— PÁGINA 1: INTERFAZ DE INFERENCIA —————————————
+# ————————————— PAGE 1: INFERENCE INTERFACE —————————————
 if page == "1️⃣ Inference":
     st.title("📰 Fake News Detection – Inference")
     st.markdown(
-        "Ingresa un texto de noticia y selecciona el modelo en la barra lateral."
+        "Enter news text and select the model from the sidebar."
     )
-    model_choice = st.sidebar.selectbox("Modelo", ["T5", "DistilBERT", "BERT"])
-    text_input   = st.text_area("🖋️ Texto de noticia:", height=200)
+    model_choice = st.sidebar.selectbox("Model", ["T5", "DistilBERT", "BERT"])
+    text_input   = st.text_area("🖋️ News text:", height=200)
 
-    if st.button("🔍 Predecir"):
+    if st.button("🔍 Predict"):
         if not text_input.strip():
-            st.warning("Por favor ingresa algún texto antes de predecir.")
+            st.warning("Please enter some text before predicting.")
         else:
-            with st.spinner(f"Analizando con {model_choice}..."):
+            with st.spinner(f"Analyzing with {model_choice}..."):
                 if model_choice == "T5":
                     label, conf = predict_t5(text_input)
                 else:
                     label, conf = predict_cls(text_input, model_choice)
-            st.subheader(f"**Predicción:** {label.upper()}")
-            st.write("**Confianzas:**")
+            st.subheader(f"**Prediction:** {label.upper()}")
+            st.write("**Confidence scores:**")
             st.json(conf)
             
 elif page == "2️⃣ Dataset EDA":
@@ -179,17 +179,17 @@ elif page == "2️⃣ Dataset EDA":
     @st.cache_data(show_spinner="Loading dataset...")
     def load_data():
         try:
-            # Método 1: Cargar directamente con datasets
+            # Method 1: Load directly with datasets
             try:
-                # Especificamos exactamente el split que queremos
+                # Specify exact split we want
                 dataset = load_dataset(
                     "ErfanMoosaviMonazzah/fake-news-detection-dataset-English",
-                    split="train",  # Especificamos el split directamente
-                    verification_mode="no_checks"  # Evita verificaciones que pueden fallar
+                    split="train",  # Specify split directly
+                    verification_mode="no_checks"  # Avoid checks that might fail
                 )
                 df = dataset.to_pandas()
                 
-                # Verificación básica de columnas
+                # Basic column verification
                 if "text" not in df.columns:
                     if "article" in df.columns:
                         df["text"] = df["article"]
@@ -209,7 +209,7 @@ elif page == "2️⃣ Dataset EDA":
                 raise
                 
         except Exception:
-            # Método 2: Datos de ejemplo embebidos
+            # Method 2: Embedded sample data
             sample_data = {
                 "text": [
                     "Scientific study confirms benefits of exercise (Real)",
@@ -221,16 +221,16 @@ elif page == "2️⃣ Dataset EDA":
             }
             return pd.DataFrame(sample_data)
 
-    # Cargar y procesar datos
+    # Load and process data
     try:
         df = load_data()
         
-        # Conversión robusta de labels
+        # Robust label conversion
         df["label"] = df["label"].apply(
             lambda x: 0 if str(x).lower() in ["fake", "false", "0", "no"] else 1
         )
         
-        # Visualizaciones
+        # Visualizations
         col1, col2 = st.columns(2)
         
         with col1:
@@ -254,7 +254,7 @@ elif page == "2️⃣ Dataset EDA":
             )
             st.plotly_chart(fig2, use_container_width=True)
         
-        # Word Cloud opcional
+        # Optional Word Cloud
         if st.checkbox("Show Word Clouds"):
             col1, col2 = st.columns(2)
             with col1:
@@ -279,127 +279,127 @@ elif page == "2️⃣ Dataset EDA":
         st.error(f"Failed to process data: {str(e)}")
 
 elif page == "3️⃣ Hyperparam Tuning":
-    st.title("⚙️ Optimización de Hiperparámetros")
+    st.title("⚙️ Hyperparameter Optimization")
     st.markdown("""
-    ## Configuración del Proceso de Optimización
-    Ajuste fino de los parámetros del modelo para maximizar el rendimiento
+    ## Optimization Process Configuration
+    Fine-tuning model parameters to maximize performance
     """)
 
-    # 1. Selector de modelo y configuración
+    # 1. Model selector and configuration
     col1, col2, col3 = st.columns(3)
     with col1:
         model_type = st.selectbox(
-            "Modelo a optimizar",
+            "Model to optimize",
             ["DistilBERT", "BERT", "T5"],
-            help="Selecciona qué modelo deseas optimizar"
+            help="Select which model to optimize"
         )
     
     with col2:
         n_trials = st.slider(
-            "Número de trials",
+            "Number of trials",
             min_value=5,
             max_value=50,
             value=15,
-            help="Cantidad de experimentos a realizar"
+            help="Number of experiments to run"
         )
     
     with col3:
         metric = st.selectbox(
-            "Métrica objetivo",
+            "Target metric",
             ["f1", "accuracy", "precision", "recall"],
             index=0,
-            help="Métrica principal a optimizar"
+            help="Primary metric to optimize"
         )
 
-    # 2. Panel de parámetros con explicaciones
-    with st.expander("📋 Detalles de los Parámetros a Optimizar", expanded=True):
+    # 2. Parameter panel with explanations
+    with st.expander("📋 Parameter Optimization Details", expanded=True):
         st.markdown("""
-        | Parámetro          | Rango               | Importancia               |
+        | Parameter          | Range               | Importance               |
         |--------------------|---------------------|---------------------------|
-        | Learning Rate      | 1e-6 a 1e-4         | Controla la velocidad de aprendizaje |
-        | Batch Size         | 8, 16, 32           | Afecta memoria y estabilidad |
-        | Epochs             | 1 a 5               | Evitar sobreentrenamiento  |
-        | Weight Decay       | 0.0 a 0.3           | Regularización L2         |
-        | Dropout            | Modelo-específico   | Prevenir overfitting      |
+        | Learning Rate      | 1e-6 to 1e-4         | Controls learning speed |
+        | Batch Size         | 8, 16, 32           | Affects memory and stability |
+        | Epochs             | 1 to 5               | Prevents overfitting  |
+        | Weight Decay       | 0.0 to 0.3           | L2 regularization         |
+        | Dropout            | Model-specific       | Prevents overfitting      |
         """)
 
-    # 3. Función principal de optimización
-    if st.button("🚀 Ejecutar Optimización", type="primary"):
-        with st.spinner(f"Optimizando {model_type} - Esto puede tomar varios minutos..."):
+    # 3. Main optimization function
+    if st.button("🚀 Run Optimization", type="primary"):
+        with st.spinner(f"Optimizing {model_type} - This may take several minutes..."):
             try:
-                # Configuración de Optuna
+                # Optuna configuration
                 study = optuna.create_study(
                     direction="maximize",
                     sampler=optuna.samplers.TPESampler(),
                     pruner=optuna.pruners.HyperbandPruner()
                 )
                 
-                # Ejecutar optimización
+                # Run optimization
                 study.optimize(
                     lambda trial: objective(trial, model_type, metric),
                     n_trials=n_trials,
                     show_progress_bar=True
                 )
 
-                # Mostrar resultados
-                st.success("Optimización completada!")
+                # Show results
+                st.success("Optimization completed!")
                 
-                # 4. Visualización de resultados
-                st.subheader("📊 Resultados de la Optimización")
+                # 4. Results visualization
+                st.subheader("📊 Optimization Results")
                 
-                # Gráfico de evolución
+                # Progress plot
                 fig1 = px.line(
                     study.trials_dataframe(),
                     x="number",
                     y="value",
-                    title=f"Evolución de la métrica {metric}",
+                    title=f"{metric} metric evolution",
                     labels={"value": metric, "number": "Trial"}
                 )
                 st.plotly_chart(fig1, use_container_width=True)
                 
-                # Mejores parámetros
-                st.subheader("🎯 Mejores Parámetros Encontrados")
+                # Best parameters
+                st.subheader("🎯 Best Parameters Found")
                 best_params = study.best_params
                 st.json(best_params)
                 
-                # Gráfico de importancia
+                # Importance plot
                 fig2 = optuna.visualization.plot_param_importances(study)
                 st.pyplot(fig2)
                 
-                # 5. Explicación de resultados
-                with st.expander("🔍 Interpretación de Resultados"):
+                # 5. Results interpretation
+                with st.expander("🔍 Results Interpretation"):
                     st.markdown(f"""
-                    - **Mejor {metric} obtenido**: {study.best_value:.4f}
-                    - **Trial número**: {study.best_trial.number}
-                    - **Parámetros clave**:
+                    - **Best {metric} achieved**: {study.best_value:.4f}
+                    - **Trial number**: {study.best_trial.number}
+                    - **Key parameters**:
                         - Learning Rate: {best_params.get('learning_rate', 'N/A')}
                         - Batch Size: {best_params.get('per_device_train_batch_size', 'N/A')}
                     """)
                     
                     if model_type == "DistilBERT":
-                        st.write("Para DistilBERT, el dropout óptimo fue:", best_params.get("hidden_dropout_prob", "N/A"))
+                        st.write("For DistilBERT, optimal dropout was:", best_params.get("hidden_dropout_prob", "N/A"))
                     elif model_type == "BERT":
-                        st.write("Para BERT, el attention dropout óptimo fue:", best_params.get("attention_probs_dropout_prob", "N/A"))
+                        st.write("For BERT, optimal attention dropout was:", best_params.get("attention_probs_dropout_prob", "N/A"))
                 
-                # 6. Opción para guardar resultados
-                if st.button("💾 Guardar Configuración Óptima"):
+                # 6. Option to save results
+                if st.button("💾 Save Optimal Configuration"):
                     save_best_config(model_type, best_params)
-                    st.toast("Configuración guardada exitosamente!", icon="✅")
+                    st.toast("Configuration saved successfully!", icon="✅")
             
             except Exception as e:
-                st.error(f"Error durante la optimización: {str(e)}")
-                st.error("Revisa los logs para más detalles")
+                st.error(f"Optimization error: {str(e)}")
+                st.error("Check logs for details")
 
-# Función de optimización (debe estar en el mismo archivo o importarse)
+# Optimization function (must be in same file or imported)
     
 elif page == "4️⃣ Model Analysis":
-    st.title("📊 Análisis de Modelos")
+    st.title("📊 Model Analysis")
     st.markdown("""
-    ## Evaluación Comparativa de Modelos
-    Análisis detallado del rendimiento de cada arquitectura
+    ## Comparative Model Evaluation
+    Detailed performance analysis of each architecture
     """)
 
-    # 1. Configuración inicial
+    # 1. Initial setup
     try:
         from sklearn.metrics import classification_report, confusion_matrix
         import seaborn as sns
@@ -407,22 +407,22 @@ elif page == "4️⃣ Model Analysis":
         import numpy as np
         from transformers import pipeline
     except ImportError as e:
-        st.error(f"Error de importación: {str(e)}")
+        st.error(f"Import error: {str(e)}")
         st.stop()
 
-    # 2. Selección de modelo para análisis
+    # 2. Model selection for analysis
     model_type = st.radio(
-        "Modelo a analizar",
+        "Model to analyze",
         ["DistilBERT", "BERT", "T5"],
         horizontal=True
     )
 
-    # 3. Sección de métricas generales
+    # 3. General metrics section
     with st.container():
-        st.subheader("📈 Rendimiento General")
+        st.subheader("📈 General Performance")
         col1, col2, col3 = st.columns(3)
         
-        # Datos de ejemplo (reemplazar con tus métricas reales)
+        # Example data (replace with your actual metrics)
         metrics = {
             "DistilBERT": {"accuracy": 0.89, "precision": 0.88, "recall": 0.90, "f1": 0.89},
             "BERT": {"accuracy": 0.91, "precision": 0.90, "recall": 0.92, "f1": 0.91},
@@ -439,12 +439,12 @@ elif page == "4️⃣ Model Analysis":
         
         with col3:
             st.write("**Dataset:** FakeNewsNet")
-            st.write("**Split:** Test (30% del total)")
-            st.write(f"**Muestras:** 12,543 artículos")
+            st.write("**Split:** Test (30% of total)")
+            st.write(f"**Samples:** 12,543 articles")
 
-    # 4. Matriz de confusión
-    with st.expander("🧮 Matriz de Confusión", expanded=True):
-        # Datos de ejemplo
+    # 4. Confusion matrix
+    with st.expander("🧮 Confusion Matrix", expanded=True):
+        # Example data
         cm = np.array([[1250, 150], [120, 1280]]) if model_type == "DistilBERT" else \
              np.array([[1300, 100], [90, 1310]]) if model_type == "BERT" else \
              np.array([[1200, 200], [180, 1220]])
@@ -453,14 +453,14 @@ elif page == "4️⃣ Model Analysis":
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
                     xticklabels=['Fake', 'Real'], 
                     yticklabels=['Fake', 'Real'])
-        plt.ylabel('Verdaderos')
-        plt.xlabel('Predicciones')
-        plt.title(f'Matriz de Confusión - {model_type}')
+        plt.ylabel('True')
+        plt.xlabel('Predicted')
+        plt.title(f'Confusion Matrix - {model_type}')
         st.pyplot(fig)
 
-    # 5. Reporte de clasificación
-    with st.expander("📝 Reporte de Clasificación Detallado"):
-        # Datos de ejemplo
+    # 5. Classification report
+    with st.expander("📝 Detailed Classification Report"):
+        # Example data
         st.code(f"""
         Classification Report - {model_type}
         {'-'*50}
@@ -474,75 +474,75 @@ elif page == "4️⃣ Model Analysis":
         weighted avg  {metrics[model_type]['precision']:.2f}     {metrics[model_type]['recall']:.2f}     {metrics[model_type]['f1']:.2f}     12543
         """)
 
-    # 6. Análisis de errores
-    with st.expander("🔍 Análisis de Errores"):
-        st.subheader("Ejemplos de Falsos Positivos/Negativos")
+    # 6. Error analysis
+    with st.expander("🔍 Error Analysis"):
+        st.subheader("False Positive/Negative Examples")
         
-        # Datos de ejemplo
+        # Example data
         error_samples = {
             "DistilBERT": [
-                {"text": "El presidente anuncia nueva ley de impuestos...", "true": "Real", "pred": "Fake", "reason": "Vocabulario político"},
-                {"text": "Descubren cura milagrosa para el cáncer...", "true": "Fake", "pred": "Real", "reason": "Lenguaje científico mal utilizado"}
+                {"text": "President announces new tax law...", "true": "Real", "pred": "Fake", "reason": "Political vocabulary"},
+                {"text": "Miracle cancer cure discovered...", "true": "Fake", "pred": "Real", "reason": "Misused scientific language"}
             ],
             "BERT": [
-                {"text": "Terremoto de 8.5 grados golpea la costa...", "true": "Real", "pred": "Fake", "reason": "Evento extremo"},
-                {"text": "Celebridad revela que es un reptiliano...", "true": "Fake", "pred": "Real", "reason": "Sensacionalismo"}
+                {"text": "8.5 magnitude earthquake hits coast...", "true": "Real", "pred": "Fake", "reason": "Extreme event"},
+                {"text": "Celebrity reveals they're reptilian...", "true": "Fake", "pred": "Real", "reason": "Sensationalism"}
             ],
             "T5": [
-                {"text": "Nuevo estudio sobre cambio climático...", "true": "Real", "pred": "Fake", "reason": "Términos técnicos"},
-                {"text": "Vacuna causa autismo, según médico...", "true": "Fake", "pred": "Real", "reason": "Pseudociencia"}
+                {"text": "New climate change study published...", "true": "Real", "pred": "Fake", "reason": "Technical terms"},
+                {"text": "Vaccine causes autism, doctor claims...", "true": "Fake", "pred": "Real", "reason": "Pseudoscience"}
             ]
         }
         
         for error in error_samples[model_type]:
             with st.container(border=True):
                 st.markdown(f"""
-                **Texto:** {error['text'][:150]}...  
-                **Real:** {error['true']} → **Predicho:** {error['pred']}  
-                **Posible razón:** {error['reason']}
+                **Text:** {error['text'][:150]}...  
+                **True:** {error['true']} → **Predicted:** {error['pred']}  
+                **Possible reason:** {error['reason']}
                 """)
 
-    # 7. Comparativa entre modelos
-    with st.expander("🆚 Comparativa entre Modelos"):
+    # 7. Model comparison
+    with st.expander("🆚 Model Comparison"):
         models = ["DistilBERT", "BERT", "T5"]
         fig = px.bar(
             x=models,
             y=[metrics[m]['f1'] for m in models],
             color=models,
-            title="Comparación de F1-Score",
-            labels={"x": "Modelo", "y": "F1-Score"}
+            title="F1-Score Comparison",
+            labels={"x": "Model", "y": "F1-Score"}
         )
         st.plotly_chart(fig, use_container_width=True)
         
         st.markdown("""
-        **Conclusiones:**
-        - BERT obtiene el mejor rendimiento general
-        - DistilBERT ofrece mejor equilibrio entre rendimiento y eficiencia
-        - T5 es más rápido pero menos preciso en esta tarea
+        **Conclusions:**
+        - BERT achieves best overall performance
+        - DistilBERT offers better performance/efficiency balance
+        - T5 is faster but less accurate for this task
         """)
 
-    # 8. Justificación técnica
-    with st.expander("🧠 Justificación Técnica"):
+    # 8. Technical justification
+    with st.expander("🧠 Technical Justification"):
         st.markdown("""
-        ### ¿Por qué estos resultados?
+        ### Why these results?
         
         **DistilBERT:**
-        - Versión compacta de BERT con 40% menos parámetros
-        - Mantiene el 97% del rendimiento de BERT
-        - Ideal para despliegues con recursos limitados
+        - Compact version of BERT with 40% fewer parameters
+        - Maintains 97% of BERT's performance
+        - Ideal for resource-constrained deployments
         
         **BERT:**
-        - Arquitectura bidireccional completa
-        - Mayor capacidad de entender contexto
-        - Requiere más recursos computacionales
+        - Full bidirectional architecture
+        - Better context understanding
+        - Requires more computational resources
         
         **T5:**
-        - Modelo de tipo seq2seq
-        - Bueno para generación de texto
-        - Menos óptimo para clasificación binaria
+        - Seq2seq model type
+        - Good for text generation
+        - Less optimal for binary classification
         
-        ### Limitaciones identificadas
-        - Dificultad con lenguaje sarcástico/irónico
-        - Errores en noticias con mezcla de hechos reales y falsos
-        - Sensibilidad a dominios no vistos en entrenamiento
+        ### Identified limitations
+        - Difficulty with sarcastic/ironic language
+        - Errors with news mixing real and fake facts
+        - Sensitivity to domains not seen in training
         """)
