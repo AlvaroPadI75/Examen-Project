@@ -20,34 +20,36 @@ from wordcloud import WordCloud
 from huggingface_hub import hf_hub_download
 # ——————————————————————————————————————
 def objective(trial, model_type, metric):
-    # 1. Define parameters to optimize
-    params = {
+    # 1. Definir parámetros de entrenamiento a optimizar
+    train_params = {
         "learning_rate": trial.suggest_float("learning_rate", 1e-6, 1e-4, log=True),
         "per_device_train_batch_size": trial.suggest_categorical("batch_size", [8, 16, 32]),
         "num_train_epochs": trial.suggest_int("epochs", 1, 5),
         "weight_decay": trial.suggest_float("weight_decay", 0.0, 0.3),
     }
     
-    # 2. Model-specific parameters
-    if model_type == "DistilBERT":
-        params["hidden_dropout_prob"] = trial.suggest_float("hidden_dropout", 0.1, 0.5)
-    elif model_type == "BERT":
-        params["attention_probs_dropout_prob"] = trial.suggest_float("attention_dropout", 0.1, 0.3)
-    elif model_type == "T5":
-        params["dropout_rate"] = trial.suggest_float("dropout", 0.1, 0.4)
+    # 2. Cargar modelo y configurar sus parámetros específicos
+    model = load_model(model_type)
     
-    # 3. Training configuration
+    # Configurar parámetros específicos del modelo
+    if model_type == "DistilBERT":
+        model.config.hidden_dropout_prob = trial.suggest_float("hidden_dropout", 0.1, 0.5)
+    elif model_type == "BERT":
+        model.config.attention_probs_dropout_prob = trial.suggest_float("attention_dropout", 0.1, 0.3)
+    elif model_type == "T5":
+        model.config.dropout_rate = trial.suggest_float("dropout", 0.1, 0.4)
+    
+    # 3. Configuración del entrenamiento (SOLO parámetros de entrenamiento)
     training_args = TrainingArguments(
         output_dir=f"./results_{model_type}",
         eval_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
         metric_for_best_model=metric,
-        **params
+        **train_params  # Solo parámetros de entrenamiento
     )
     
-    # 4. Load model and datasets
-    model = load_model(model_type)
+    # 4. Crear el Trainer
     trainer = Trainer(
         model=model,
         args=training_args,
@@ -56,7 +58,7 @@ def objective(trial, model_type, metric):
         compute_metrics=compute_metrics
     )
     
-    # 5. Training and evaluation
+    # 5. Entrenamiento y evaluación
     trainer.train()
     eval_results = trainer.evaluate()
     return eval_results[f"eval_{metric}"]
