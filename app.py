@@ -8,6 +8,7 @@ from transformers import (
     BertTokenizerFast,
     BertForSequenceClassification
 )
+from transformers import TrainingArguments, Trainer
 #-------------------------------------
 from datasets import load_dataset
 import optuna
