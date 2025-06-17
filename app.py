@@ -390,3 +390,187 @@ def objective(trial, model_type, metric):
     trainer.train()
     eval_results = trainer.evaluate()
     return eval_results[f"eval_{metric}"]
+    
+elif page == "4️⃣ Model Analysis":
+    st.title("📊 Model Analysis with Real Data")
+    
+    # 1. Cargar modelos y datos (usa tus funciones reales)
+    @st.cache_resource
+    def load_analysis_data():
+        try:
+            # Reemplaza esto con tu implementación real
+            from datasets import load_dataset
+            from sklearn.model_selection import train_test_split
+            
+            # Cargar dataset
+            dataset = load_dataset("ErfanMoosaviMonazzah/fake-news-detection-dataset-English")
+            texts = dataset["text"]
+            labels = dataset["label"]
+            
+            # Split de evaluación (ajusta según tu setup)
+            _, eval_texts, _, eval_labels = train_test_split(
+                texts, labels, test_size=0.2, random_state=42
+            )
+            return eval_texts, eval_labels
+        
+        except Exception as e:
+            st.error(f"Error loading data: {str(e)}")
+            return None, None
+
+    # 2. Interfaz principal
+    model_type = st.selectbox(
+        "Select Model to Analyze",
+        ["DistilBERT", "BERT", "T5"],
+        key="model_selector"
+    )
+
+    # Cargar datos de evaluación
+    eval_texts, eval_labels = load_analysis_data()
+    
+    if eval_texts is None:
+        st.error("Could not load evaluation data")
+        st.stop()
+
+    # 3. Función para obtener predicciones (adaptar a tus modelos)
+    def get_predictions(model_type, texts):
+        predictions = []
+        try:
+            # Ejemplo para DistilBERT - reemplaza con tu pipeline real
+            if model_type == "DistilBERT":
+                from transformers import pipeline
+                classifier = pipeline(
+                    "text-classification",
+                    model="Alvaropad1/Fakenews",
+                    subfolder="Distilbert-fakenews",
+                    device=0 if torch.cuda.is_available() else -1
+                )
+                results = classifier(texts, batch_size=8)
+                predictions = [1 if res["label"].upper() == "REAL" else 0 for res in results]
+            
+            # Agrega implementaciones similares para BERT y T5
+            elif model_type == "BERT":
+                # Tu implementación para BERT
+                pass
+            elif model_type == "T5":
+                # Tu implementación para T5
+                pass
+                
+        except Exception as e:
+            st.error(f"Prediction error: {str(e)}")
+        return predictions
+
+    # 4. Análisis de rendimiento
+    if st.button("🔍 Run Full Analysis", type="primary"):
+        with st.spinner(f"Evaluating {model_type} on {len(eval_texts)} samples..."):
+            try:
+                # Obtener predicciones
+                predictions = get_predictions(model_type, eval_texts[:1000])  # Limitar para demo
+                
+                if not predictions:
+                    st.error("No predictions generated")
+                    st.stop()
+
+                # Calcular métricas
+                from sklearn.metrics import (
+                    classification_report,
+                    confusion_matrix,
+                    accuracy_score,
+                    f1_score,
+                    precision_score,
+                    recall_score
+                )
+                
+                # 5. Mostrar métricas clave
+                st.subheader("📊 Performance Metrics")
+                cols = st.columns(4)
+                with cols[0]:
+                    st.metric("Accuracy", f"{accuracy_score(eval_labels[:1000], predictions):.2%}")
+                with cols[1]:
+                    st.metric("Precision", f"{precision_score(eval_labels[:1000], predictions):.2%}")
+                with cols[2]:
+                    st.metric("Recall", f"{recall_score(eval_labels[:1000], predictions):.2%}")
+                with cols[3]:
+                    st.metric("F1-Score", f"{f1_score(eval_labels[:1000], predictions):.2%}")
+
+                # 6. Matriz de confusión interactiva
+                st.subheader("🧮 Confusion Matrix")
+                cm = confusion_matrix(eval_labels[:1000], predictions)
+                fig, ax = plt.subplots()
+                sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+                            xticklabels=['Fake', 'Real'],
+                            yticklabels=['Fake', 'Real'])
+                plt.ylabel('Actual')
+                plt.xlabel('Predicted')
+                st.pyplot(fig)
+
+                # 7. Reporte completo
+                st.subheader("📝 Classification Report")
+                report = classification_report(
+                    eval_labels[:1000],
+                    predictions,
+                    target_names=['Fake', 'Real'],
+                    output_dict=True
+                )
+                st.json(report)  # Alternativa: st.text(classification_report(...))
+
+                # 8. Análisis de errores detallado
+                st.subheader("🔍 Error Analysis")
+                error_indices = [i for i, (true, pred) in enumerate(zip(eval_labels[:1000], predictions)) if true != pred]
+                
+                if error_indices:
+                    selected_error = st.selectbox(
+                        "Select error case to analyze",
+                        options=error_indices,
+                        format_func=lambda x: f"Sample {x}: {eval_texts[x][:50]}..."
+                    )
+                    
+                    st.markdown(f"""
+                    **Full Text:**  
+                    {eval_texts[selected_error]}
+                    
+                    **Details:**
+                    - True Label: {'Real' if eval_labels[selected_error] == 1 else 'Fake'}
+                    - Predicted: {'Real' if predictions[selected_error] == 1 else 'Fake'}
+                    - Model Confidence: {'High' if max(predictions_probs[selected_error]) > 0.8 else 'Medium' if max(predictions_probs[selected_error]) > 0.6 else 'Low'}
+                    """)
+                    
+                    # Análisis de atención (para modelos transformer)
+                    if st.checkbox("Show attention analysis (BERT/DistilBERT only)"):
+                        st.warning("Attention visualization would go here")
+                        # Implementar visualización de atención
+                else:
+                    st.success("No errors found in the evaluated samples!")
+
+                # 9. Comparación entre modelos (requiere datos de otros modelos)
+                if st.checkbox("Compare with other models"):
+                    st.subheader("🆚 Model Comparison")
+                    # Aquí iría la lógica para comparar múltiples modelos
+                    st.warning("Model comparison data would be loaded here")
+
+            except Exception as e:
+                st.error(f"Analysis failed: {str(e)}")
+
+    # 10. Justificación técnica del modelo
+    st.subheader("🧠 Technical Justification")
+    with st.expander("Why this model architecture?"):
+        st.markdown("""
+        **DistilBERT Advantages:**
+        - 40% smaller than BERT while retaining 97% performance
+        - Faster inference time
+        - More efficient on resource-constrained environments
+        
+        **Trade-offs:**
+        - Slightly lower accuracy on complex linguistic patterns
+        - Less effective with rare words
+        
+        **Improvement Opportunities:**
+        - Additional fine-tuning on domain-specific data
+        - Ensemble with other models
+        - Post-processing rules for common error patterns
+        """)
+
+    # 11. Visualización de embeddings (opcional)
+    if st.checkbox("Show Embedding Visualization"):
+        st.subheader("🌌 Text Embeddings Projection")
+        st.warning("Embedding visualization would appear here")
+        # Código para generar proyección UMAP/t-SNE de embeddings
