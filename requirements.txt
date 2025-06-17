@@ -1,24 +1,25 @@
+# Core app
 streamlit
 watchdog
-# Modelos
-safetensors
-sentencepiece
-# Core
-streamlit
 
-# Models
+# Model loading & inference
 torch
 transformers
-datasets>=2.13.0
+safetensors
+sentencepiece
 huggingface-hub>=0.17.0
-fsspec<2023.2.0      
+
+# Dataset I/O
+datasets>=2.13.0
+fsspec<2023.2.0
+pyarrow
+
+# EDA & visualization
 pandas
 matplotlib
 seaborn
 plotly
 wordcloud
-scikit-learn
 
-# Para cargar y explorar datasets
-datasets
-pyarrow
+# Metrics & utilities
+scikit-learn
