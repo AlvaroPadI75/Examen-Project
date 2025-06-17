@@ -235,85 +235,112 @@ elif page == "2️⃣ Dataset EDA":
     
     except Exception as e:
         st.error(f"Failed to process data: {str(e)}")
+
 elif page == "3️⃣ Hyperparam Tuning":
     st.title("⚙️ Hyperparameter Optimization")
     st.markdown("""
-    ## Tuning Process
-    Optimización de hiperparámetros usando Optuna para maximizar el rendimiento del modelo.
+    ## Fine-tuning de Modelos
+    Optimización de hiperparámetros para los modelos:
+    - DistilBERT
+    - BERT
+    - T5
     """)
     
-    # Sección de configuración de parámetros
-    with st.expander("🔧 Parameter Tuning Setup", expanded=True):
-        st.markdown("""
-        ### Parameters Tuned and Justification
-        
-        | Parameter | Range | Why Tuned |
-        |-----------|-------|-----------|
-        | Learning Rate | 1e-5 to 1e-3 | Fundamental para la convergencia del modelo |
-        | Batch Size | 16, 32, 64 | Balance entre velocidad y estabilidad |
-        | Num Epochs | 3 to 10 | Evitar overfitting manteniendo buen aprendizaje |
-        | Dropout Rate | 0.1 to 0.5 | Regularización para prevenir overfitting |
-        | Weight Decay | 0.0 to 0.1 | Control de sobreajuste L2 |
-        """)
-        
-        st.image("https://i.imgur.com/JZjtVWp.png", caption="Optuna Dashboard Example", width=600)
+    model_type = st.selectbox("Selecciona el modelo a optimizar", 
+                            ["DistilBERT", "BERT", "T5"])
     
-    # Sección de resultados
-    st.header("📈 Optimization Results")
+    # Configuración común
+    st.subheader("🔧 Configuración del Estudio")
+    n_trials = st.slider("Número de trials", 10, 100, 20)
+    metric = st.selectbox("Métrica a optimizar", 
+                         ["f1", "accuracy", "precision", "recall"])
     
-    # Gráficos de evolución (simulados)
+    if st.button("🚀 Ejecutar Optimización"):
+        with st.spinner(f"Optimizando {model_type} (esto puede tomar varios minutos)..."):
+            best_params = run_optuna_study(model_type, n_trials, metric)
+            
+            st.success("¡Optimización completada!")
+            st.subheader("🎯 Mejores Parámetros Encontrados")
+            st.json(best_params)
+            
+            # Visualización de resultados
+            display_results(model_type)
+
+def run_optuna_study(model_type, n_trials, metric):
+    import optuna
+    from transformers import Trainer, TrainingArguments
+    
+    def objective(trial):
+        # Parámetros comunes
+        params = {
+            "learning_rate": trial.suggest_float("learning_rate", 1e-6, 1e-4, log=True),
+            "per_device_train_batch_size": trial.suggest_categorical("batch_size", [8, 16, 32]),
+            "num_train_epochs": trial.suggest_int("epochs", 1, 5),
+            "weight_decay": trial.suggest_float("weight_decay", 0.0, 0.3),
+        }
+        
+        # Parámetros específicos por modelo
+        if model_type == "DistilBERT":
+            params.update({
+                "hidden_dropout_prob": trial.suggest_float("hidden_dropout", 0.1, 0.5),
+            })
+        elif model_type == "BERT":
+            params.update({
+                "attention_probs_dropout_prob": trial.suggest_float("attention_dropout", 0.1, 0.3),
+            })
+        elif model_type == "T5":
+            params.update({
+                "dropout_rate": trial.suggest_float("dropout", 0.1, 0.4),
+            })
+        
+        # Configuración de entrenamiento
+        training_args = TrainingArguments(
+            output_dir=f"./results_{model_type}",
+            evaluation_strategy="epoch",
+            save_strategy="epoch",
+            load_best_model_at_end=True,
+            metric_for_best_model=metric,
+            **params
+        )
+        
+        # Cargar modelo y datasets (adaptar según tu implementación)
+        model = load_your_model(model_type)  # Reemplaza con tu función
+        trainer = Trainer(
+            model=model,
+            args=training_args,
+            train_dataset=train_dataset,
+            eval_dataset=val_dataset,
+            compute_metrics=compute_metrics  # Asegúrate de definir esta función
+        )
+        
+        trainer.train()
+        eval_results = trainer.evaluate()
+        return eval_results[f"eval_{metric}"]
+    
+    study = optuna.create_study(direction="maximize")
+    study.optimize(objective, n_trials=n_trials)
+    return study.best_params
+
+def display_results(model_type):
+    # Gráficos de optimización
+    st.subheader("📈 Resultados de la Optimización")
+    
     col1, col2 = st.columns(2)
     with col1:
         st.plotly_chart(px.line(
-            x=[1, 2, 3, 4, 5],
-            y=[0.75, 0.82, 0.85, 0.86, 0.87],
-            title="F1 Score Improvement",
-            labels={"x": "Trial", "y": "F1 Score"}
+            x=range(1, n_trials+1),
+            y=study.best_trials,
+            title="Evolución de la Métrica",
+            labels={"x": "Trial", "y": metric}
         ), use_container_width=True)
     
     with col2:
         st.plotly_chart(px.parallel_coordinates(
-            pd.DataFrame({
-                "lr": [1e-4, 5e-5, 3e-5],
-                "batch": [32, 64, 32],
-                "dropout": [0.2, 0.3, 0.4],
-                "score": [0.82, 0.85, 0.87]
-            }),
-            color="score",
-            title="Parameter Relationships"
+            study.trials_dataframe(),
+            color=f"eval_{metric}",
+            title="Combinación de Parámetros"
         ), use_container_width=True)
     
-    # Mejores parámetros encontrados
-    st.subheader("🎯 Best Parameters Found")
-    best_params = {
-        "Learning Rate": "3.2e-5",
-        "Batch Size": "32",
-        "Epochs": "5",
-        "Dropout Rate": "0.3",
-        "Weight Decay": "0.01"
-    }
-    
-    st.json(best_params)
-    
-    # Explicación del proceso
-    with st.expander("🔍 How parameters were selected"):
-        st.markdown("""
-        1. **Objetivo**: Maximizar el F1-score en el conjunto de validación
-        2. **Método**: 50 trials usando Optuna con sampler TPESampler
-        3. **Criterio de parada**: 10 trials sin mejora > 0.001
-        4. **Selección final**: Combinación con mejor balance entre precisión y recall
-        
-        ```python
-        study = optuna.create_study(direction="maximize")
-        study.optimize(objective, n_trials=50)
-        ```
-        """)
-    
-    # Sección de conclusiones
-    st.header("📝 Key Insights")
-    st.markdown("""
-    - El learning rate óptimo fue menor que el valor por defecto (3.2e-5 vs 5e-5)
-    - Batch size de 32 mostró mejor equilibrio que 16 o 64
-    - Dropout de 0.3 fue crucial para mejorar la generalización
-    - Más épocas no mejoraron los resultados después de la época 5
-    """)
+    # Exportar resultados
+    if st.button("💾 Exportar Configuración Óptima"):
+        save_best_config(model_type, study.best_params)
