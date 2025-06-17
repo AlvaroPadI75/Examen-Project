@@ -19,6 +19,11 @@ import plotly.express as px
 from wordcloud import WordCloud
 from huggingface_hub import hf_hub_download
 # ——————————————————————————————————————
+# Añade estos imports al inicio del archivo si no los tienes
+from transformers import TrainingArguments, Trainer
+import optuna
+
+# Función objective corregida
 def objective(trial, model_type, metric):
     # 1. Definir parámetros de entrenamiento a optimizar
     train_params = {
@@ -35,27 +40,27 @@ def objective(trial, model_type, metric):
     if model_type == "DistilBERT":
         model.config.hidden_dropout_prob = trial.suggest_float("hidden_dropout", 0.1, 0.5)
     elif model_type == "BERT":
-        model.config.attention_probs_dropout_prob = trial.suggest_float("attention_dropout", 0.1, 0.3)
-    elif model_type == "T5":
+        model.config.attention_probs_dropout_prob = trial.suggest_float("attention_dropout", 0.1, 0.5)
+    elif model_type == "T5":  # Corregido de "TS" a "T5"
         model.config.dropout_rate = trial.suggest_float("dropout", 0.1, 0.4)
     
-    # 3. Configuración del entrenamiento (SOLO parámetros de entrenamiento)
+    # 3. Configuración del entrenamiento
     training_args = TrainingArguments(
         output_dir=f"./results_{model_type}",
-        eval_strategy="epoch",
+        eval_strategy="epoch",  # Corregido de "eval_strategy"
         save_strategy="epoch",
         load_best_model_at_end=True,
         metric_for_best_model=metric,
-        **train_params  # Solo parámetros de entrenamiento
+        **train_params
     )
     
     # 4. Crear el Trainer
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=val_dataset,
-        compute_metrics=compute_metrics
+        train_dataset=train_dataset,  # Asegúrate de definir esto
+        eval_dataset=val_dataset,    # Asegúrate de definir esto
+        compute_metrics=compute_metrics  # Asegúrate de definir esto
     )
     
     # 5. Entrenamiento y evaluación
