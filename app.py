@@ -17,6 +17,48 @@ import plotly.express as px
 from wordcloud import WordCloud
 from huggingface_hub import hf_hub_download
 # ——————————————————————————————————————
+def objective(trial, model_type, metric):
+    # 1. Definir parámetros a optimizar
+    params = {
+        "learning_rate": trial.suggest_float("learning_rate", 1e-6, 1e-4, log=True),
+        "per_device_train_batch_size": trial.suggest_categorical("batch_size", [8, 16, 32]),
+        "num_train_epochs": trial.suggest_int("epochs", 1, 5),
+        "weight_decay": trial.suggest_float("weight_decay", 0.0, 0.3),
+    }
+    
+    # 2. Parámetros específicos por modelo
+    if model_type == "DistilBERT":
+        params["hidden_dropout_prob"] = trial.suggest_float("hidden_dropout", 0.1, 0.5)
+    elif model_type == "BERT":
+        params["attention_probs_dropout_prob"] = trial.suggest_float("attention_dropout", 0.1, 0.3)
+    elif model_type == "T5":
+        params["dropout_rate"] = trial.suggest_float("dropout", 0.1, 0.4)
+    
+    # 3. Configuración del entrenamiento (adaptar a tu implementación)
+    training_args = TrainingArguments(
+        output_dir=f"./results_{model_type}",
+        evaluation_strategy="epoch",
+        save_strategy="epoch",
+        load_best_model_at_end=True,
+        metric_for_best_model=metric,
+        **params
+    )
+    
+    # 4. Cargar modelo y datasets (implementar según tu caso)
+    model = load_model(model_type)
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=train_dataset,
+        eval_dataset=val_dataset,
+        compute_metrics=compute_metrics
+    )
+    
+    # 5. Entrenamiento y evaluación
+    trainer.train()
+    eval_results = trainer.evaluate()
+    return eval_results[f"eval_{metric}"]
+    
 # ¡Ésta tiene que ser la PRIMERA llamada a Streamlit!
 st.set_page_config(page_title="📰 Fake News Detection", layout="wide")
 # ——————————————————————————————————————
@@ -349,47 +391,6 @@ elif page == "3️⃣ Hyperparam Tuning":
                 st.error("Revisa los logs para más detalles")
 
 # Función de optimización (debe estar en el mismo archivo o importarse)
-def objective(trial, model_type, metric):
-    # 1. Definir parámetros a optimizar
-    params = {
-        "learning_rate": trial.suggest_float("learning_rate", 1e-6, 1e-4, log=True),
-        "per_device_train_batch_size": trial.suggest_categorical("batch_size", [8, 16, 32]),
-        "num_train_epochs": trial.suggest_int("epochs", 1, 5),
-        "weight_decay": trial.suggest_float("weight_decay", 0.0, 0.3),
-    }
-    
-    # 2. Parámetros específicos por modelo
-    if model_type == "DistilBERT":
-        params["hidden_dropout_prob"] = trial.suggest_float("hidden_dropout", 0.1, 0.5)
-    elif model_type == "BERT":
-        params["attention_probs_dropout_prob"] = trial.suggest_float("attention_dropout", 0.1, 0.3)
-    elif model_type == "T5":
-        params["dropout_rate"] = trial.suggest_float("dropout", 0.1, 0.4)
-    
-    # 3. Configuración del entrenamiento (adaptar a tu implementación)
-    training_args = TrainingArguments(
-        output_dir=f"./results_{model_type}",
-        evaluation_strategy="epoch",
-        save_strategy="epoch",
-        load_best_model_at_end=True,
-        metric_for_best_model=metric,
-        **params
-    )
-    
-    # 4. Cargar modelo y datasets (implementar según tu caso)
-    model = load_model(model_type)
-    trainer = Trainer(
-        model=model,
-        args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=val_dataset,
-        compute_metrics=compute_metrics
-    )
-    
-    # 5. Entrenamiento y evaluación
-    trainer.train()
-    eval_results = trainer.evaluate()
-    return eval_results[f"eval_{metric}"]
     
 elif page == "4️⃣ Model Analysis":
     st.title("📊 Análisis de Modelos")
