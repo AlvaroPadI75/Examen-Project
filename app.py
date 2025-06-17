@@ -136,11 +136,6 @@ elif page == "2️⃣ Dataset EDA":
         - **Sample noisy / ambiguous texts**
         """
     )
-
-elif page == "2️⃣ Dataset EDA":
-    st.title("📊 Exploratory Data Analysis")
-    st.write("Explore the Fake-News dataset structure and content:")
-
     @st.cache_data(show_spinner="Loading data...")
     def load_data():
         try:
