@@ -139,7 +139,7 @@ elif page == "2️⃣ Dataset EDA":
     @st.cache_data(show_spinner=False)
     def load_data():
         # Use the *public* HF dataset name (no “-English” suffix):
-        ds = load_dataset("ErfanMoosaviMonazzah/fake-news-detection", split="train")
+        ds = load_dataset("ErfanMoosaviMonazzah/fake-news-detection-dataset-English", split="train")
         df = pd.DataFrame(ds)
         # add a token-length column
         df["token_count"] = df["text"].str.split().str.len()
