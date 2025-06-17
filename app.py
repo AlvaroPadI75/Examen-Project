@@ -10,6 +10,7 @@ from transformers import (
 )
 #-------------------------------------
 from datasets import load_dataset
+import optuna
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
