@@ -7,11 +7,11 @@ torch
 transformers
 safetensors
 sentencepiece
-huggingface-hub>=0.17.0
+huggingface-hub
 
 # Dataset I/O
-datasets>=2.13.0
-fsspec<2023.2.0
+datasets
+fsspec
 pyarrow
 
 # EDA & visualization
