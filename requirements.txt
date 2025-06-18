@@ -3,7 +3,7 @@ streamlit
 watchdog
 pandas
 pyarrow
-
+optuna 
 # Dataset loading
 datasets
 fsspec
