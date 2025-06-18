@@ -166,7 +166,7 @@ def predict_cls(text: str, model_key: str):
 #
 # ————————————— SIDEBAR: NAVIGATION —————————————
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("", ["1️⃣ Inference", "2️⃣ Dataset EDA", "3️⃣ Hyperparam Tuning", "4️⃣ Model Analysis"])
+page = st.sidebar.radio("", ["1️⃣ Inference", "2️⃣ Dataset EDA", "3️⃣ Hyperparam Tuning", "4️⃣ Model Analysis", "5️⃣ Optimal Hyperparams"])
 
 # ————————————— PAGE 1: INFERENCE INTERFACE —————————————
 if page == "1️⃣ Inference":
