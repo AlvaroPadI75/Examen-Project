@@ -10,6 +10,7 @@ from transformers import (
 )
 from transformers import TrainingArguments, Trainer
 #-------------------------------------
+import json
 from datasets import load_dataset
 import optuna
 import pandas as pd
@@ -568,3 +569,28 @@ elif page == "4️⃣ Model Analysis":
         - Errors with news mixing real and fake facts
         - Sensitivity to domains not seen in training
         """)
+        
+elif page == "5️⃣ Best Hyperparameters":
+    st.title("🛠️ Best Hyperparameters Found")
+    st.markdown("""
+    These are the optimal hyperparameters that Optuna discovered during tuning.
+    """)
+    
+    # 1) Cargamos el JSON
+    try:
+        with open("best_params.json", "r") as f:
+            best_params = json.load(f)
+    except FileNotFoundError:
+        st.error("Cannot find `best_params.json` in the app folder.")
+        st.stop()
+    
+    # 2) Mostramos la tabla de parámetros
+    st.subheader("🔎 Parameters Overview")
+    st.json(best_params)
+    
+    # 3) Métricas clave (si tu JSON incluye métricas adicionales, ajústalo aquí)
+    #    En este caso asumimos sólo hiperparámetros, así que los mostramos como métricas
+    st.subheader("📊 Params as Metrics")
+    cols = st.columns(len(best_params))
+    for (param, value), col in zip(best_params.items(), cols):
+        col.metric(label=param, value=value)
