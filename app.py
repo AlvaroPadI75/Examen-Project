@@ -570,27 +570,47 @@ elif page == "4️⃣ Model Analysis":
         - Sensitivity to domains not seen in training
         """)
         
-elif page == "5️⃣ Best Hyperparameters":
-    st.title("🛠️ Best Hyperparameters Found")
-    st.markdown("""
-    These are the optimal hyperparameters that Optuna discovered during tuning.
-    """)
-    
-    # 1) Cargamos el JSON
+if page == "5️⃣ Optimal Hyperparams":
+    st.title("🎯 Hiperparámetros Óptimos")
+    st.markdown(
+        """
+        En esta página cargamos el archivo `best_params.json` generado
+        tras la optimización con Optuna y presentamos los resultados.
+        """
+    )
+
+    # 1) Cargar el JSON (suponiendo que está en la misma carpeta que app.py)
     try:
         with open("best_params.json", "r") as f:
             best_params = json.load(f)
     except FileNotFoundError:
-        st.error("Cannot find `best_params.json` in the app folder.")
+        st.error("No se encontró `best_params.json`. Súbelo a la raíz de tu proyecto.")
         st.stop()
-    
-    # 2) Mostramos la tabla de parámetros
-    st.subheader("🔎 Parameters Overview")
+
+    # 2) Mostrar JSON crudo
+    st.subheader("Parámetros (raw JSON)")
     st.json(best_params)
-    
-    # 3) Métricas clave (si tu JSON incluye métricas adicionales, ajústalo aquí)
-    #    En este caso asumimos sólo hiperparámetros, así que los mostramos como métricas
-    st.subheader("📊 Params as Metrics")
-    cols = st.columns(len(best_params))
-    for (param, value), col in zip(best_params.items(), cols):
-        col.metric(label=param, value=value)
+
+    # 3) Tabla con pandas
+    st.subheader("Parámetros en Tabla")
+    df_params = pd.DataFrame.from_dict(best_params, orient="index", columns=["value"])
+    df_params.index.name = "parameter"
+    df_params = df_params.reset_index()
+    st.table(df_params)
+
+    # 4) Gráfico de barras (solo numéricos)
+    numeric = {
+        k: v for k, v in best_params.items()
+        if isinstance(v, (int, float))
+    }
+    if numeric:
+        st.subheader("Visualización de Valores Numéricos")
+        fig = px.bar(
+            x=list(numeric.keys()),
+            y=list(numeric.values()),
+            labels={"x": "Parámetro", "y": "Valor"},
+            title="Valores Óptimos de Hiperparámetros"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("No hay parámetros numéricos para graficar.")
