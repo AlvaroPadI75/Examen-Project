@@ -575,7 +575,7 @@ elif page == "4️⃣ Model Analysis":
         - Sensitivity to domains not seen in training
         """)
         
-if page == "5️⃣ Optimal Hyperparams":
+elif page == "5️⃣ Optimal Hyperparams":
     st.title("🎯 Hiperparámetros Óptimos")
     st.write(
         "En esta pestaña cargamos y mostramos el contenido de `best_params.json`."
