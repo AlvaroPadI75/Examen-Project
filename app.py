@@ -29,9 +29,14 @@ def load_model(model_type):
     _, model = models[model_type]
     return model
 
-# Por ahora, usamos datasets de ejemplo o los mismos df de tu EDA:
-train_dataset = load_dataset(..., split="train[:80%]")  # el 80% para train
-val_dataset   = load_dataset(..., split="train[80%:]")  # el 20% para val
+train_dataset = load_dataset(
+    "ErfanMoosaviMonazzah/fake-news-detection-dataset-English",
+    split="train[:80%]"
+)
+val_dataset = load_dataset(
+    "ErfanMoosaviMonazzah/fake-news-detection-dataset-English",
+    split="train[80%:]"
+)
 
 def compute_metrics(eval_pred):
     logits, labels = eval_pred
@@ -572,45 +577,42 @@ elif page == "4️⃣ Model Analysis":
         
 if page == "5️⃣ Optimal Hyperparams":
     st.title("🎯 Hiperparámetros Óptimos")
-    st.markdown(
-        """
-        En esta página cargamos el archivo `best_params.json` generado
-        tras la optimización con Optuna y presentamos los resultados.
-        """
+    st.write(
+        "En esta pestaña cargamos y mostramos el contenido de `best_params.json`."
     )
 
-    # 1) Cargar el JSON (suponiendo que está en la misma carpeta que app.py)
+    # 1) Intentamos leer el JSON
     try:
         with open("best_params.json", "r") as f:
             best_params = json.load(f)
     except FileNotFoundError:
-        st.error("No se encontró `best_params.json`. Súbelo a la raíz de tu proyecto.")
+        st.error("No se encontró `best_params.json`. Súbelo junto a tu app.py.")
         st.stop()
 
-    # 2) Mostrar JSON crudo
-    st.subheader("Parámetros (raw JSON)")
+    # 2) Mostrar el JSON crudo
+    st.subheader("📄 Parámetros (raw JSON)")
     st.json(best_params)
 
-    # 3) Tabla con pandas
-    st.subheader("Parámetros en Tabla")
-    df_params = pd.DataFrame.from_dict(best_params, orient="index", columns=["value"])
-    df_params.index.name = "parameter"
+    # 3) Tabla Pandas
+    st.subheader("📋 Parámetros en forma de tabla")
+    df_params = pd.DataFrame.from_dict(best_params, orient="index", columns=["valor"])
+    df_params.index.name = "parámetro"
     df_params = df_params.reset_index()
     st.table(df_params)
 
-    # 4) Gráfico de barras (solo numéricos)
-    numeric = {
-        k: v for k, v in best_params.items()
+    # 4) Gráfico de barras de los numéricos
+    numeric_params = {
+        k: v for k, v in best_params.items() 
         if isinstance(v, (int, float))
     }
-    if numeric:
-        st.subheader("Visualización de Valores Numéricos")
+    if numeric_params:
+        st.subheader("📊 Valores numéricos óptimos")
         fig = px.bar(
-            x=list(numeric.keys()),
-            y=list(numeric.values()),
+            x=list(numeric_params.keys()),
+            y=list(numeric_params.values()),
             labels={"x": "Parámetro", "y": "Valor"},
-            title="Valores Óptimos de Hiperparámetros"
+            title="Hiperparámetros numéricos"
         )
         st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("No hay parámetros numéricos para graficar.")
+        st.info("No hay valores numéricos para graficar.")
