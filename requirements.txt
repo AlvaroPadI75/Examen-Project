@@ -1,7 +1,7 @@
 # Core app
 streamlit
 watchdog
-
+json
 # Model loading & inference
 torch
 transformers
