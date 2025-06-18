@@ -1,26 +1,25 @@
-# Core app
+# Core
 streamlit
 watchdog
-json
-# Model loading & inference
-torch
-transformers
-safetensors
-sentencepiece
-huggingface-hub
-
-# Dataset I/O
-datasets
-fsspec
+pandas
 pyarrow
 
-# EDA & visualization
-pandas
+# Dataset loading
+datasets
+fsspec
+huggingface-hub
+
+# Modeling
+torch
+transformers
+sentencepiece
+safetensors
+
+# Visualization
 matplotlib
 seaborn
 plotly
 wordcloud
-optuna
 
-# Metrics & utilities
+# ML utilities
 scikit-learn
